@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+build/
+.next/
+*.log
+
+# Local-only researcher-view configuration (never commit access values)
+config.js
