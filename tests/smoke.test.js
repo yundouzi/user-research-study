@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { webcrypto } = require("node:crypto");
 
 function fakeElement() {
   return {
@@ -41,6 +42,7 @@ const context = {
   console,
   Date,
   Math,
+  crypto: webcrypto,
   JSON,
   Blob,
   FormData,
@@ -66,7 +68,7 @@ const context = {
   scrollTo() {},
   confirm: () => true,
   location: { protocol: "file:" },
-  navigator: { sendBeacon: () => true },
+  navigator: {},
   YZH_STUDY_MATERIALS: { audioSources: ["", "", "", "", ""] }
 };
 context.window = context;
@@ -83,7 +85,23 @@ state.answers = {
   infoRanking: { order: INFORMATION_FIELDS.map(item => item[0]), durationMs:1000 },
   infoReveal: { fields:["主题标签"], episode:"S8E4", durationMs:1000 },
   contentTrials: Object.fromEntries(CONTENT_TRIALS.map((trial,index) => [index,{ feature:trial.feature, help:5, featureOpened:true, elapsedMs:1000, audioConfigured:false }])),
-  structureTrials: Object.fromEntries(state.structureComparisons.map((comparison,index) => [index,{ questionId:comparison.id, aType:comparison.a.type, aCount:comparison.a.count, bType:comparison.b.type, bCount:comparison.b.count, visualChoice:"A", understandingChoice:"B", dimensionsAgree:false, durationMs:1000 }])),
+  structureTrials: Object.fromEntries(state.structureComparisons.map((comparison,index) => [index,{
+    questionId:comparison.id,
+    aType:comparison.a.type,
+    aCount:comparison.a.count,
+    bType:comparison.b.type,
+    bCount:comparison.b.count,
+    canonicalAType:comparison.canonicalA.type,
+    canonicalACount:comparison.canonicalA.count,
+    canonicalBType:comparison.canonicalB.type,
+    canonicalBCount:comparison.canonicalB.count,
+    sideSwapped:comparison.sideSwapped,
+    layoutArm:state.layoutArm,
+    visualChoice:"A",
+    understandingChoice:"B",
+    dimensionsAgree:false,
+    durationMs:1000
+  }])),
   interview: { completed:true, durationMs:1000 },
   scenario: { episode:"S8E4", durationMs:1000 }
 };
@@ -108,6 +126,13 @@ globalThis.__qa = {
   sampleAnswerRows,
   studyVersion: STUDY_VERSION,
   syncEndpoint: SYNC_ENDPOINT,
+  participantId: state.participantId,
+  stateContainsSessionToken: Object.hasOwn(state, "sessionToken") || JSON.stringify(state).includes(sessionCredential.token),
+  balanceCheck: (() => {
+    const arm0 = balancedComparisons("fixed-participant", 0).sort((a,b) => a.id.localeCompare(b.id));
+    const arm1 = balancedComparisons("fixed-participant", 1).sort((a,b) => a.id.localeCompare(b.id));
+    return arm0.every((item,index) => item.id === arm1[index].id && item.a.type === arm1[index].b.type && item.a.count === arm1[index].b.count && item.b.type === arm1[index].a.type && item.b.count === arm1[index].a.count);
+  })(),
   eventHasStableId: (() => {
     const originalLength = state.events.length;
     log("qa_event", "worker_sync");
@@ -133,9 +158,21 @@ assert.ok(qa.fieldValuesComplete, "Every reveal field must have a value for ever
 assert.deepEqual([...qa.answerHeader], ["participant_id", "study_version", "question_id", "stage", "measure", "response", "duration_ms", "metadata"], "Answer CSV must use the analysis-ready schema");
 assert.equal(qa.sampleAnswerRows.length, 51, "Completed study export should contain one header and 50 answer rows");
 assert.ok(qa.sampleAnswerRows.slice(1).every(row => row[2] && row[4] && !row.includes(undefined)), "Every exported answer row must have a question ID, measure, and defined values");
-assert.equal(qa.studyVersion, 6, "Sites-compatible data schema should use study version 6");
+assert.equal(qa.studyVersion, 7, "Anonymous-session data schema should use study version 7");
 assert.equal(qa.syncEndpoint, "/api/study/sync", "Client should target the same-origin Sites sync API");
 assert.ok(qa.eventHasStableId, "Behavior events need stable IDs for idempotent database writes");
+assert.match(qa.participantId, /^P-\d{8}-[A-F0-9]{24}$/, "Participant IDs need a high-entropy suffix");
+assert.equal(qa.stateContainsSessionToken, false, "The anonymous session token must not enter the synced/exported study state");
+assert.ok(qa.balanceCheck, "Each stable Task 3 question must reverse A/B positions between layout arms");
+
+const task3Rows = qa.sampleAnswerRows.slice(1).filter(row => row[3] === "Task 3");
+assert.equal(task3Rows.length, 24, "Task 3 must export visual comfort and understanding as separate rows");
+for (const row of task3Rows) {
+  const metadata = JSON.parse(row[7]);
+  assert.ok(metadata.displayAType && metadata.displayBType, "Task 3 metadata must contain the actual displayed designs");
+  assert.ok(metadata.canonicalAType && metadata.canonicalBType, "Task 3 metadata must preserve the fixed canonical pair");
+  assert.ok([true, false].includes(metadata.sideSwapped), "Task 3 metadata must record whether sides were swapped");
+}
 
 for (const item of qa.structureMarkup) {
   const className = item.type === "list" ? "phone-list-item" : item.type === "network" ? "phone-node" : item.type === "tree" ? "tree-leaf" : "phone-cluster-item";
@@ -143,4 +180,4 @@ for (const item of qa.structureMarkup) {
   assert.equal(count, item.count, `${item.type}-${item.count} should render ${item.count} episode nodes`);
 }
 
-console.log("Smoke checks passed: 12 stages, 13 fields, 5 content trials, 12 randomized structure comparisons, and no open-ended text areas.");
+console.log("Smoke checks passed: secure participant IDs, balanced Task 3 sides, separate Task 3 measures, 12 stages, and no open-ended text areas.");

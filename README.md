@@ -30,19 +30,20 @@ python -m http.server 8000
 
 ## 数据记录与导出
 
-- 参与者编号自动生成，不收集姓名或联系方式。
-- 进度、答案、随机题序和行为事件先保存在浏览器 `localStorage`，在 Sites 环境中再同步到 D1 数据库。
+- 参与者编号使用日期加 96 位加密随机后缀自动生成，不收集姓名或联系方式。
+- 每个浏览器会话另有一个 256 位匿名密钥；密钥只保存在参与者浏览器，D1 只保存 SHA-256 哈希，不能只凭参与者编号覆盖记录。
+- 进度、答案、平衡后的 A/B 位置、随机题序和行为事件先保存在浏览器 `localStorage`，在 Sites 环境中再同步到 D1 数据库。
 - “答案 CSV”按题号输出结构化答案，便于统计分析。
 - “行为日志 CSV”记录页面操作与时间戳。
 - JSON 保留完整状态、答案与事件。
-- 研究者视图可导出当前参与者数据；Sites 版本还可导出数据库中的全部参与者答案与全部行为日志。
+- 研究者视图可导出当前参与者数据；Sites 版本还可导出全部答案、全部行为日志，以及将 Task 3 两项选择和真实显示组合展开后的专用 CSV。
 - “重新开始”会清除当前本地记录并生成新的参与者编号。
 
 ## ChatGPT Sites
 
 - `.openai/hosting.json` 声明逻辑 D1 绑定 `DB`。
 - `index.js` 是 Sites 识别的 Worker 入口，转发到 `_worker.js`；后者提供同源保存 API、服务端研究者授权和汇总 CSV 导出。
-- `migrations/0001_research_data.sql` 创建 `participants`、`answers` 和 `events` 表。
+- `migrations/0001_research_data.sql` 创建 `participants`、`answers` 和 `events` 表；`0002_anonymous_sessions_and_revisions.sql` 增加匿名会话、写入版本与幂等请求字段。
 - `.env.example` 只声明所需的环境变量名称，不包含任何真实令牌。
 
 创建站点后应先保存一个未部署版本用于检查。只有在研究者确认后才部署；Sites 的部署 URL 均为生产 URL。

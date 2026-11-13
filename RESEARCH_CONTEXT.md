@@ -60,9 +60,9 @@ The repository contains demonstration panels but no licensed research audio.
 
 ## Task 3 — Pairwise structure comparison
 
-Participants complete 12 A/B comparisons covering list, network, tree, and category structures at 5, 10, and 15 episodes. The 12 comparison questions are shuffled reproducibly from the participant ID.
+Participants complete 12 fixed A/B comparisons covering list, network, tree, and category structures at 5, 10, and 15 episodes. Question IDs remain stable. The question order is shuffled reproducibly, while two participant layout arms reverse the displayed left/right position for every fixed question.
 
-For each pair, participants first select which interface looks more visually comfortable, then select which is easier for understanding content and information organization. The site records both choices, pair metadata, duration, and whether the two choices agree.
+For each pair, participants first select which interface looks more visually comfortable, then select which is easier for understanding content and information organization. The site records both choices separately, the canonical pair, the actual displayed A/B pair, layout arm, swap status, duration, and whether the two choices agree.
 
 This pairwise design replaces the earlier plan to give two Likert ratings to each of 12 standalone conditions.
 

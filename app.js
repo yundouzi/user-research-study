@@ -1,8 +1,11 @@
 "use strict";
 
-const STORAGE_KEY = "yzhStudyV6State";
-const STUDY_VERSION = 6;
+const STORAGE_KEY = "yzhStudyV7State";
+const SESSION_STORAGE_KEY = "yzhStudyV7AnonymousSession";
+const SYNC_QUEUE_KEY = "yzhStudyV7PendingSync";
+const STUDY_VERSION = 7;
 const SYNC_ENDPOINT = "/api/study/sync";
+const SESSION_ENDPOINT = "/api/study/session";
 
 const STEPS = [
   "intro",
@@ -260,6 +263,9 @@ let syncInFlight = false;
 let syncQueued = false;
 let serverSyncUnavailable = false;
 let researcherSessionToken = "";
+let sessionRegistered = false;
+let sessionRegistrationPromise = null;
+let syncRetryDelay = 1200;
 
 function compactNumber(value) {
   const number = Number(value) || 0;
@@ -272,9 +278,38 @@ function escapeHTML(value) {
   })[character]);
 }
 
+function randomHex(byteLength) {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function participantId() {
   const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
-  return `P-${date}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  return `P-${date}-${randomHex(12).toUpperCase()}`;
+}
+
+function createSessionCredential() {
+  const token = randomHex(32);
+  return {
+    participantId: participantId(),
+    token,
+    layoutArm: parseInt(token.slice(0, 2), 16) % 2
+  };
+}
+
+function loadSessionCredential() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || "null");
+    if (participantIdIsValid(saved?.participantId) && /^[a-f0-9]{64}$/.test(saved?.token) && [0, 1].includes(saved?.layoutArm)) return saved;
+  } catch {}
+  const credential = createSessionCredential();
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(credential));
+  return credential;
+}
+
+function participantIdIsValid(value) {
+  return /^P-\d{8}-[A-F0-9]{24}$/.test(String(value || ""));
 }
 
 function seededRandom(seedText) {
@@ -288,12 +323,21 @@ function seededRandom(seedText) {
   };
 }
 
-function shuffledComparisons(id) {
-  const comparisons = STRUCTURE_COMPARISONS.map(comparison => ({
+function balancedComparisons(id, layoutArm) {
+  const comparisons = STRUCTURE_COMPARISONS.map((comparison, sourceIndex) => {
+    const sideSwapped = (layoutArm + sourceIndex) % 2 === 1;
+    const canonicalA = { ...comparison.a };
+    const canonicalB = { ...comparison.b };
+    return {
     id: comparison.id,
-    a: { ...comparison.a },
-    b: { ...comparison.b }
-  }));
+      sourceIndex,
+      canonicalA,
+      canonicalB,
+      sideSwapped,
+      a: { ...(sideSwapped ? canonicalB : canonicalA) },
+      b: { ...(sideSwapped ? canonicalA : canonicalB) }
+    };
+  });
   const random = seededRandom(id);
   for (let index = comparisons.length - 1; index > 0; index -= 1) {
     const target = Math.floor(random() * (index + 1));
@@ -303,7 +347,7 @@ function shuffledComparisons(id) {
 }
 
 function newState() {
-  const id = participantId();
+  const id = sessionCredential.participantId;
   return {
     version: STUDY_VERSION,
     participantId: id,
@@ -319,9 +363,14 @@ function newState() {
     contentStarts: {},
     featureOpen: {},
     structureIndex: 0,
-    structureComparisons: shuffledComparisons(id),
+    layoutArm: sessionCredential.layoutArm,
+    structureComparisons: balancedComparisons(id, sessionCredential.layoutArm),
     nextEventSequence: 1,
+    syncRevision: 0,
+    lastSyncedEventSequence: 0,
+    syncConflict: false,
     lastSyncedAt: "",
+    updatedAt: new Date().toISOString(),
     completedAt: ""
   };
 }
@@ -329,15 +378,23 @@ function newState() {
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    return saved?.version === STUDY_VERSION ? saved : newState();
+    return saved?.version === STUDY_VERSION && saved.participantId === sessionCredential.participantId ? saved : newState();
   } catch {
     return newState();
   }
 }
 
+let sessionCredential = loadSessionCredential();
 let state = loadState();
+let pendingSync = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "null");
+    return saved?.participantId === state.participantId ? saved : null;
+  } catch { return null; }
+})();
 
-function save({ sync = true } = {}) {
+function save({ sync = true, touch = true } = {}) {
+  if (touch) state.updatedAt = new Date().toISOString();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   if (sync) scheduleServerSync();
 }
@@ -354,6 +411,9 @@ function log(type, target = "", payload = {}) {
     timestamp: new Date().toISOString(),
     epochMs: Date.now()
   });
+  if (state.events.length > 5000 && (state.lastSyncedEventSequence || 0) > 0) {
+    state.events = state.events.filter(event => event.sequence > state.lastSyncedEventSequence - 200);
+  }
   state.nextEventSequence = sequence + 1;
   save();
 }
@@ -367,21 +427,77 @@ function answerRecords() {
   return rows.map(row => Object.fromEntries(header.map((key, index) => [key, row[index]])));
 }
 
-function syncPayload() {
+function syncPayload(requestId = randomHex(16)) {
+  const unsyncedEvents = state.events
+    .filter(event => event.sequence > (state.lastSyncedEventSequence || 0))
+    .slice(0, 500);
+  const stateSnapshot = { ...state, events: state.events.slice(-100) };
   return {
+    requestId,
+    baseRevision: state.syncRevision || 0,
     participantId: state.participantId,
     studyVersion: STUDY_VERSION,
     currentStep: state.step,
     createdAt: state.createdAt,
     completedAt: state.completedAt || null,
-    state,
+    state: stateSnapshot,
     answers: answerRecords(),
-    events: state.events.slice(-1500)
+    events: unsyncedEvents
   };
 }
 
+function loadOrCreatePendingSync() {
+  if (pendingSync) return pendingSync;
+  const requestId = randomHex(16);
+  const payload = syncPayload(requestId);
+  pendingSync = {
+    participantId: state.participantId,
+    requestId,
+    maxEventSequence: payload.events.reduce((maximum, event) => Math.max(maximum, event.sequence || 0), state.lastSyncedEventSequence || 0),
+    body: JSON.stringify(payload)
+  };
+  localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(pendingSync));
+  return pendingSync;
+}
+
+function clearPendingSync() {
+  pendingSync = null;
+  localStorage.removeItem(SYNC_QUEUE_KEY);
+}
+
+async function ensureParticipantSession() {
+  if (sessionRegistered) return true;
+  if (sessionRegistrationPromise) return sessionRegistrationPromise;
+  sessionRegistrationPromise = (async () => {
+    try {
+      const response = await fetch(SESSION_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "authorization": `Participant ${sessionCredential.token}`
+        },
+        body: JSON.stringify({
+          participantId: state.participantId,
+          studyVersion: STUDY_VERSION,
+          layoutArm: state.layoutArm
+        })
+      });
+      if (response.status === 404 || response.status === 405) serverSyncUnavailable = true;
+      if (!response.ok) return false;
+      const result = await response.json();
+      sessionRegistered = result.participantId === state.participantId && result.layoutArm === state.layoutArm;
+      return sessionRegistered;
+    } catch {
+      return false;
+    } finally {
+      sessionRegistrationPromise = null;
+    }
+  })();
+  return sessionRegistrationPromise;
+}
+
 function scheduleServerSync(delay = 900) {
-  if (!canUseServerAPI()) return;
+  if (!canUseServerAPI() || state.syncConflict) return;
   if (syncTimer) window.clearTimeout(syncTimer);
   syncTimer = window.setTimeout(() => {
     syncTimer = null;
@@ -397,18 +513,49 @@ async function syncServerState() {
   }
   syncInFlight = true;
   try {
+    if (!await ensureParticipantSession()) {
+      if (!serverSyncUnavailable) scheduleServerSync(syncRetryDelay);
+      syncRetryDelay = Math.min(syncRetryDelay * 2, 30000);
+      return false;
+    }
+    const queued = loadOrCreatePendingSync();
     const response = await fetch(SYNC_ENDPOINT, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(syncPayload()),
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Participant ${sessionCredential.token}`
+      },
+      body: queued.body,
       keepalive: true
     });
     if (response.status === 404 || response.status === 405) serverSyncUnavailable = true;
-    if (!response.ok) return false;
-    state.lastSyncedAt = new Date().toISOString();
-    save({ sync: false });
+    if (response.status === 409) {
+      const conflict = await response.json().catch(() => ({}));
+      state.syncConflict = true;
+      state.serverRevision = conflict.revision;
+      clearPendingSync();
+      save({ sync: false, touch: false });
+      toast("检测到另一页面已更新本参与者记录；当前本地数据已保留，但已停止自动覆盖服务器数据。");
+      return false;
+    }
+    if (!response.ok) {
+      if (!serverSyncUnavailable) scheduleServerSync(syncRetryDelay);
+      syncRetryDelay = Math.min(syncRetryDelay * 2, 30000);
+      return false;
+    }
+    const result = await response.json();
+    state.syncRevision = result.revision;
+    state.lastSyncedEventSequence = Math.max(state.lastSyncedEventSequence || 0, queued.maxEventSequence || 0);
+    state.lastSyncedAt = result.syncedAt || new Date().toISOString();
+    state.syncConflict = false;
+    clearPendingSync();
+    syncRetryDelay = 1200;
+    save({ sync: false, touch: false });
+    if (state.events.some(event => event.sequence > state.lastSyncedEventSequence)) syncQueued = true;
     return true;
   } catch {
+    scheduleServerSync(syncRetryDelay);
+    syncRetryDelay = Math.min(syncRetryDelay * 2, 30000);
     return false;
   } finally {
     syncInFlight = false;
@@ -483,6 +630,11 @@ function goBack() {
 function resetStudy() {
   if (!window.confirm("重新开始会清除当前参与者的所有作答和进度。确定继续吗？")) return;
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+  localStorage.removeItem(SYNC_QUEUE_KEY);
+  pendingSync = null;
+  sessionRegistered = false;
+  sessionCredential = loadSessionCredential();
   state = newState();
   save();
   render();
@@ -974,7 +1126,7 @@ function renderResearcher() {
   stopCountdown();
   const completedContent = Object.keys(state.answers.contentTrials || {}).length;
   const completedStructures = Object.keys(state.answers.structureTrials || {}).length;
-  const aggregateExports = canUseServerAPI() ? `<button class="button" id="researchExportAllAnswers" type="button">导出全部答案 CSV</button><button class="button secondary" id="researchExportAllEvents" type="button">导出全部日志 CSV</button>` : "";
+  const aggregateExports = canUseServerAPI() ? `<button class="button" id="researchExportAllAnswers" type="button">导出全部答案 CSV</button><button class="button secondary" id="researchExportTask3" type="button">导出 Task 3 对比 CSV</button><button class="button secondary" id="researchExportAllEvents" type="button">导出全部日志 CSV</button>` : "";
   app.innerHTML = wrap(`${sectionHeader("Researcher console", "研究执行台", `当前参与者：${state.participantId}`, `<span class="badge dark">${STEP_LABELS[state.step]}</span>`)}
     <div class="research-grid">
       <aside class="card research-nav"><button class="button secondary" id="returnParticipant" type="button">← 返回参与者视图</button><button class="button" id="researchExportCSV" type="button">导出本参与者答案 CSV</button><button class="button secondary" id="researchExportEventsCSV" type="button">导出本参与者日志 CSV</button><button class="button secondary" id="researchExportJSON" type="button">导出本参与者 JSON</button>${aggregateExports}<button class="button secondary" id="markInterrupted" type="button">标记异常中断</button></aside>
@@ -1041,7 +1193,18 @@ function answerRows() {
     audioConfigured: trial.audioConfigured
   }));
   Object.values(state.answers.structureTrials || {}).sort((a, b) => a.questionId.localeCompare(b.questionId)).forEach(trial => {
-    const metadata = { aType: trial.aType, aCount: trial.aCount, bType: trial.bType, bCount: trial.bCount };
+    const metadata = {
+      displayAType: trial.aType,
+      displayACount: trial.aCount,
+      displayBType: trial.bType,
+      displayBCount: trial.bCount,
+      canonicalAType: trial.canonicalAType,
+      canonicalACount: trial.canonicalACount,
+      canonicalBType: trial.canonicalBType,
+      canonicalBCount: trial.canonicalBCount,
+      sideSwapped: trial.sideSwapped,
+      layoutArm: trial.layoutArm
+    };
     add(trial.questionId, "Task 3", "visual_comfort_choice", trial.visualChoice, trial.durationMs, metadata);
     add(trial.questionId, "Task 3", "understanding_choice", trial.understandingChoice, trial.durationMs, { ...metadata, dimensionsAgree: trial.dimensionsAgree });
   });
@@ -1187,6 +1350,7 @@ document.addEventListener("click", event => {
   if (event.target.id === "exportEventsCSV" || event.target.id === "researchExportEventsCSV") exportEventsCSV();
   if (event.target.id === "exportJSON" || event.target.id === "researchExportJSON") exportJSON();
   if (event.target.id === "researchExportAllAnswers") exportAggregateCSV("answers");
+  if (event.target.id === "researchExportTask3") exportAggregateCSV("task3");
   if (event.target.id === "researchExportAllEvents") exportAggregateCSV("events");
   if (event.target.id === "returnParticipant") render();
   if (event.target.id === "markInterrupted") {
@@ -1203,9 +1367,17 @@ document.addEventListener("click", event => {
 });
 
 window.addEventListener("pagehide", () => {
-  if (!canUseServerAPI() || !navigator.sendBeacon) return;
-  const body = new Blob([JSON.stringify(syncPayload())], { type: "application/json" });
-  navigator.sendBeacon(SYNC_ENDPOINT, body);
+  if (!canUseServerAPI() || !sessionRegistered || state.syncConflict) return;
+  const queued = loadOrCreatePendingSync();
+  fetch(SYNC_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "authorization": `Participant ${sessionCredential.token}`
+    },
+    body: queued.body,
+    keepalive: true
+  }).catch(() => {});
 });
 
 document.addEventListener("change", event => {
@@ -1325,6 +1497,12 @@ document.addEventListener("submit", event => {
       aCount: comparison.a.count,
       bType: comparison.b.type,
       bCount: comparison.b.count,
+      canonicalAType: comparison.canonicalA.type,
+      canonicalACount: comparison.canonicalA.count,
+      canonicalBType: comparison.canonicalB.type,
+      canonicalBCount: comparison.canonicalB.count,
+      sideSwapped: comparison.sideSwapped,
+      layoutArm: state.layoutArm,
       visualChoice: data.visualChoice,
       understandingChoice: data.understandingChoice,
       dimensionsAgree: data.visualChoice === data.understandingChoice,
