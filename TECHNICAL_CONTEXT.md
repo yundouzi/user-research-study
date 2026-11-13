@@ -11,6 +11,7 @@ This document describes the local application and its ChatGPT Sites compatibilit
 - `app.js`: study content, state, rendering, validation, logging, local persistence, Sites synchronization, and export.
 - `study-materials.js`: five optional non-secret audio paths.
 - `config.example.js`: example local researcher-view configuration.
+- `index.js`: Sites-recognized Worker entry point that re-exports `_worker.js`.
 - `_worker.js`: Sites-compatible Worker API, D1 persistence, protected aggregate exports, and static-asset fallback.
 - `.openai/hosting.json`: Sites project linkage and logical storage bindings. `project_id` is added only by Sites.
 - `migrations/0001_research_data.sql`: D1 schema for participants, normalized answers, and events.

@@ -41,7 +41,7 @@ python -m http.server 8000
 ## ChatGPT Sites
 
 - `.openai/hosting.json` 声明逻辑 D1 绑定 `DB`。
-- `_worker.js` 提供同源保存 API、服务端研究者授权和汇总 CSV 导出。
+- `index.js` 是 Sites 识别的 Worker 入口，转发到 `_worker.js`；后者提供同源保存 API、服务端研究者授权和汇总 CSV 导出。
 - `migrations/0001_research_data.sql` 创建 `participants`、`answers` 和 `events` 表。
 - `.env.example` 只声明所需的环境变量名称，不包含任何真实令牌。
 
