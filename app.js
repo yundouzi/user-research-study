@@ -1,7 +1,8 @@
 "use strict";
 
-const STORAGE_KEY = "yzhStudyV4State";
-const STUDY_VERSION = 4;
+const STORAGE_KEY = "yzhStudyV6State";
+const STUDY_VERSION = 6;
+const SYNC_ENDPOINT = "/api/study/sync";
 
 const STEPS = [
   "intro",
@@ -9,12 +10,12 @@ const STEPS = [
   "needs",
   "infoRank",
   "infoReveal",
-  "scenario",
   "contentIntro",
   "contentTrial",
   "structureIntro",
   "structureTrial",
   "interview",
+  "scenario",
   "complete"
 ];
 
@@ -24,12 +25,12 @@ const STEP_LABELS = {
   needs: "Task 1 · 用户需求",
   infoRank: "Task 2 · 信息排序",
   infoReveal: "Task 2 · 逐层揭露",
-  scenario: "Task 2 · 真实场景",
   contentIntro: "Task 2 · 单集内信息",
   contentTrial: "Task 2 · 单集内信息",
   structureIntro: "Task 3 · 呈现形式",
-  structureTrial: "Task 3 · 结构评价",
-  interview: "结构访谈",
+  structureTrial: "Task 3 · 结构对比",
+  interview: "Task 4 · 结构访谈",
+  scenario: "Task 4 · 真实场景",
   complete: "完成"
 };
 
@@ -234,11 +235,31 @@ const STRUCTURE_TYPES = {
   cluster: { label: "分类", description: "在主题区域中浏览单集" }
 };
 
+const STRUCTURE_COMPARISONS = [
+  { id: "T3-01", a: { type: "list", count: 5 }, b: { type: "network", count: 10 } },
+  { id: "T3-02", a: { type: "network", count: 10 }, b: { type: "tree", count: 15 } },
+  { id: "T3-03", a: { type: "tree", count: 15 }, b: { type: "cluster", count: 5 } },
+  { id: "T3-04", a: { type: "cluster", count: 5 }, b: { type: "list", count: 10 } },
+  { id: "T3-05", a: { type: "list", count: 10 }, b: { type: "network", count: 15 } },
+  { id: "T3-06", a: { type: "network", count: 15 }, b: { type: "tree", count: 5 } },
+  { id: "T3-07", a: { type: "tree", count: 5 }, b: { type: "cluster", count: 10 } },
+  { id: "T3-08", a: { type: "cluster", count: 10 }, b: { type: "list", count: 15 } },
+  { id: "T3-09", a: { type: "list", count: 15 }, b: { type: "network", count: 5 } },
+  { id: "T3-10", a: { type: "network", count: 5 }, b: { type: "tree", count: 10 } },
+  { id: "T3-11", a: { type: "tree", count: 10 }, b: { type: "cluster", count: 15 } },
+  { id: "T3-12", a: { type: "cluster", count: 15 }, b: { type: "list", count: 5 } }
+];
+
 const app = document.querySelector("#app");
 const toastElement = document.querySelector("#toast");
 const accessDialog = document.querySelector("#accessDialog");
 let countdownTimer = null;
 let configAttempted = false;
+let syncTimer = null;
+let syncInFlight = false;
+let syncQueued = false;
+let serverSyncUnavailable = false;
+let researcherSessionToken = "";
 
 function compactNumber(value) {
   const number = Number(value) || 0;
@@ -267,15 +288,18 @@ function seededRandom(seedText) {
   };
 }
 
-function shuffledConditions(id) {
-  const conditions = [];
-  [5, 10, 15].forEach(count => Object.keys(STRUCTURE_TYPES).forEach(type => conditions.push({ type, count })));
+function shuffledComparisons(id) {
+  const comparisons = STRUCTURE_COMPARISONS.map(comparison => ({
+    id: comparison.id,
+    a: { ...comparison.a },
+    b: { ...comparison.b }
+  }));
   const random = seededRandom(id);
-  for (let index = conditions.length - 1; index > 0; index -= 1) {
+  for (let index = comparisons.length - 1; index > 0; index -= 1) {
     const target = Math.floor(random() * (index + 1));
-    [conditions[index], conditions[target]] = [conditions[target], conditions[index]];
+    [comparisons[index], comparisons[target]] = [comparisons[target], comparisons[index]];
   }
-  return conditions;
+  return comparisons;
 }
 
 function newState() {
@@ -295,7 +319,10 @@ function newState() {
     contentStarts: {},
     featureOpen: {},
     structureIndex: 0,
-    structureConditions: shuffledConditions(id)
+    structureComparisons: shuffledComparisons(id),
+    nextEventSequence: 1,
+    lastSyncedAt: "",
+    completedAt: ""
   };
 }
 
@@ -310,12 +337,16 @@ function loadState() {
 
 let state = loadState();
 
-function save() {
+function save({ sync = true } = {}) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (sync) scheduleServerSync();
 }
 
 function log(type, target = "", payload = {}) {
+  const sequence = state.nextEventSequence || (state.events.length + 1);
   state.events.push({
+    id: `${state.participantId}-${sequence}`,
+    sequence,
     type,
     target,
     payload,
@@ -323,7 +354,69 @@ function log(type, target = "", payload = {}) {
     timestamp: new Date().toISOString(),
     epochMs: Date.now()
   });
+  state.nextEventSequence = sequence + 1;
   save();
+}
+
+function canUseServerAPI() {
+  return !serverSyncUnavailable && ["http:", "https:"].includes(window.location?.protocol || "");
+}
+
+function answerRecords() {
+  const [header, ...rows] = answerRows();
+  return rows.map(row => Object.fromEntries(header.map((key, index) => [key, row[index]])));
+}
+
+function syncPayload() {
+  return {
+    participantId: state.participantId,
+    studyVersion: STUDY_VERSION,
+    currentStep: state.step,
+    createdAt: state.createdAt,
+    completedAt: state.completedAt || null,
+    state,
+    answers: answerRecords(),
+    events: state.events.slice(-1500)
+  };
+}
+
+function scheduleServerSync(delay = 900) {
+  if (!canUseServerAPI()) return;
+  if (syncTimer) window.clearTimeout(syncTimer);
+  syncTimer = window.setTimeout(() => {
+    syncTimer = null;
+    syncServerState();
+  }, delay);
+}
+
+async function syncServerState() {
+  if (!canUseServerAPI()) return false;
+  if (syncInFlight) {
+    syncQueued = true;
+    return false;
+  }
+  syncInFlight = true;
+  try {
+    const response = await fetch(SYNC_ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(syncPayload()),
+      keepalive: true
+    });
+    if (response.status === 404 || response.status === 405) serverSyncUnavailable = true;
+    if (!response.ok) return false;
+    state.lastSyncedAt = new Date().toISOString();
+    save({ sync: false });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    syncInFlight = false;
+    if (syncQueued) {
+      syncQueued = false;
+      scheduleServerSync(250);
+    }
+  }
 }
 
 function toast(message) {
@@ -345,6 +438,7 @@ function goTo(step) {
   stopCountdown();
   const from = state.step;
   state.step = step;
+  if (step === "complete" && !state.completedAt) state.completedAt = new Date().toISOString();
   state.pageEnteredAt = Date.now();
   save();
   log("navigation", `${from}->${step}`);
@@ -373,16 +467,16 @@ function goBack() {
     needs: "profile",
     infoRank: "needs",
     infoReveal: "infoRank",
-    scenario: "infoReveal",
-    contentIntro: "scenario",
+    contentIntro: "infoReveal",
     contentTrial: "contentIntro",
     structureIntro: "contentTrial",
     structureTrial: "structureIntro",
     interview: "structureTrial",
-    complete: "interview"
+    scenario: "interview",
+    complete: "scenario"
   }[state.step] || "intro";
   if (state.step === "structureIntro") state.contentIndex = CONTENT_TRIALS.length - 1;
-  if (state.step === "interview") state.structureIndex = state.structureConditions.length - 1;
+  if (state.step === "interview") state.structureIndex = state.structureComparisons.length - 1;
   goTo(previous);
 }
 
@@ -437,6 +531,10 @@ function checkboxChoices(name, options) {
   return `<div class="choice-list two-columns">${options.map(([value, label]) => `<label class="choice"><input type="checkbox" name="${name}" value="${value}"><span>${label}</span></label>`).join("")}</div>`;
 }
 
+function limitedCheckboxChoices(name, options, limit, counterId) {
+  return `<div class="choice-list two-columns">${options.map(([value, label]) => `<label class="choice"><input type="checkbox" name="${name}" value="${value}" data-choice-limit="${limit}" data-choice-group="${name}" data-counter-id="${counterId}"><span>${label}</span></label>`).join("")}</div><p class="helper" id="${counterId}">已选 0/${limit}</p>`;
+}
+
 function renderProfile() {
   return wrap(`${sectionHeader("Before all tasks", "参与者基本信息", "请先完成以下表单。参与者编号已自动生成，不需要填写姓名或联系方式。", `<span class="badge">约 3 分钟</span>`)}
     <form id="profileForm" class="narrow">
@@ -446,7 +544,7 @@ function renderProfile() {
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">1</span><span>性别</span></div>
-        ${radioChoices("gender", [["female","女"],["male","男"],["nonbinary","非二元性别"],["undisclosed","其他／不便回答"]])}
+        ${radioChoices("gender", [["male","男"],["female","女"]])}
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">2</span><span>年龄</span></div>
@@ -455,27 +553,27 @@ function renderProfile() {
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">3</span><span>播客收听频率</span></div>
-        ${radioChoices("listeningFrequency", [["daily","每天"],["severalWeekly","每周数次"],["weekly","每周一次"],["biweekly","两周一次"],["less","更少"],["never","从不"]])}
+        ${radioChoices("listeningFrequency", [["almostDaily","几乎每天"],["weekly3to5","每周 3—5 次"],["weekly1to2","每周 1—2 次"],["monthly1to3","每月 1—3 次"],["rarely","很少收听"]])}
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">4</span><span>常用播客平台 <small class="muted">（可多选）</small></span></div>
-        ${checkboxChoices("platforms", [["xiaoyuzhou","小宇宙"],["apple","Apple Podcasts"],["spotify","Spotify"],["netease","网易云音乐"],["ximalaya","喜马拉雅"],["qqmusic","QQ 音乐"],["youtube","YouTube"],["other","其他（访谈）"]])}
+        ${checkboxChoices("platforms", [["ximalaya","喜马拉雅"],["xiaoyuzhou","小宇宙"],["apple","Apple 播客"],["youtube","YouTube"],["other","其他（访谈）"]])}
       </section>
       <section class="card question-card">
-        <div class="question-title"><span class="question-number">5</span><span>常听的播客类型 <small class="muted">（可多选）</small></span></div>
-        ${checkboxChoices("podcastTypes", [["interview","访谈对话"],["knowledge","知识科普"],["news","新闻时事"],["culture","文化艺术"],["career","商业职场"],["life","生活情感"],["society","社会人文"],["comedy","喜剧娱乐"],["story","故事叙事"],["other","其他（访谈）"]])}
+        <div class="question-title"><span class="question-number">5</span><span>常听的播客类型 <small class="muted">（最多选 3 项）</small></span></div>
+        ${limitedCheckboxChoices("podcastTypes", [["business","商业"],["growthCareer","自我成长与职业探索"],["society","社会"],["stories","故事奇谈"],["humanitiesHistory","人文历史"],["technology","科技"],["health","医疗健康"],["foodLife","饮食生活"],["art","艺术"],["music","音乐"],["casualTalk","趣味闲谈"],["other","其他（访谈）"]], 3, "podcastTypeCount")}
       </section>
       <section class="card question-card">
-        <div class="question-title"><span class="question-number">6</span><span>寻找播客的渠道 <small class="muted">（可多选）</small></span></div>
-        ${checkboxChoices("discoveryChannels", [["homepage","平台首页／排行榜"],["search","关键词搜索"],["subscriptions","订阅列表"],["social","社交媒体"],["friends","朋友推荐"],["communities","兴趣社区／群聊"],["other","其他（访谈）"]])}
+        <div class="question-title"><span class="question-number">6</span><span>收听播客的场景 <small class="muted">（最多选 3 项）</small></span></div>
+        ${limitedCheckboxChoices("listeningScenes", [["commute","通勤"],["housework","家务"],["exercise","运动"],["walking","散步"],["workStudy","工作或学习"],["beforeSleep","睡前"],["dedicated","安排专门时间认真收听"]], 3, "listeningSceneCount")}
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">7</span><span>是否有播客创作经验</span></div>
         ${radioChoices("creationExperience", [["yes","有"],["no","没有"]])}
       </section>
       <section class="card question-card">
-        <div class="question-title"><span class="question-number">8</span><span>对“岩中花述”的熟悉程度</span></div>
-        ${radioChoices("showFamiliarity", [["neverHeard","从未听说过"],["heardOnly","听说过，但没有收听"],["fewEpisodes","听过一两期"],["occasional","偶尔收听"],["frequent","经常收听"]])}
+        <div class="question-title"><span class="question-number">8</span><span>对《岩中花述》的熟悉程度</span></div>
+        ${radioChoices("showFamiliarity", [["everyEpisode","每期都听"],["moreThanFive","听过 5 期以上"],["twoToFive","听过 2—5 期"],["oneOrTwo","听过一两次"],["never","没听过"]])}
       </section>
       <div class="form-actions"><button class="button" type="submit">提交并开始 Task 1</button></div>
     </form>`);
@@ -486,24 +584,16 @@ function radioChoices(name, options, required = true) {
 }
 
 function renderNeeds() {
-  const goals = [
-    ["subscribed", "A. 收听已经订阅的节目"], ["browse", "B. 随意浏览，发现有趣的新内容"],
-    ["topic", "C. 围绕某个感兴趣的主题寻找内容"], ["person", "D. 寻找某位嘉宾或主持人的节目"],
-    ["learn", "E. 学习某个领域的知识"], ["refind", "F. 寻找以前听过的内容"], ["other", "G. 其他（访谈）"]
-  ];
   return wrap(`${sectionHeader("Level 1 · Task 1", "用户的需求", "请根据你平时使用播客平台的真实习惯作答。", `<span class="badge">约 5 分钟</span>`)}
     <form id="needsForm" class="narrow">
-      <section class="card question-card">
-        <div class="question-title"><span class="question-number">1</span><span>当你打开播客平台时，最常见的目的是什么？<small class="muted">（最多选 3 项）</small></span></div>
-        <div class="choice-list two-columns">${goals.map(([value, label]) => `<label class="choice"><input type="checkbox" name="goals" value="${value}" data-max-three><span>${label}</span></label>`).join("")}</div>
-        <p class="helper" id="goalCount">已选 0/3</p>
-      </section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">2</span><span>当你想寻找新的播客内容时，通常从哪里开始？</span></div>${radioChoices("discoveryStart", [["home","A. 平台首页或排行榜推荐"],["search","B. 关键词搜索"],["subscriptions","C. 订阅列表中的节目"],["social","D. 社交媒体推荐"],["friends","E. 朋友推荐"],["other","F. 其他（访谈）"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">3</span><span>在决定是否收听一集陌生播客时，你最不确定的是什么？</span></div>${radioChoices("uncertainty", [["what","A. 这期播客究竟讨论什么"],["depth","B. 讨论是否足够深入"],["guest","C. 嘉宾的观点是否值得听"],["context","D. 音频是否适合当前场景或时间"],["interest","E. 内容是否符合自己的兴趣"],["other","F. 其他（访谈）"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">4</span><span>如果听了 10—15 分钟后发现一集播客不符合预期，你通常会怎么做？</span></div>${radioChoices("mismatchAction", [["exit","A. 立即退出"],["seek","B. 跳到其他时间位置继续尝试"],["speed","C. 加速收听"],["finish","D. 仍然继续听完"],["rare","E. 很少出现这种情况"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">5</span><span>你是否曾希望重新找到某集播客中听过的一句话或某段讨论？</span></div>${radioChoices("refindFrequency", [["often","A. 经常"],["sometimes","B. 偶尔"],["rarely","C. 很少"],["never","D. 从未"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">6</span><span>听完一期播客后，你通常会选择：</span></div>${radioChoices("afterListening", [["nextShow","A. 听同栏目的下一期播客"],["system","B. 听系统推荐的下一期播客"],["similar","C. 听主题类似的播客"],["stop","D. 不再继续听"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">7</span><span>在收听播客前，你认为多大程度上需要了解播客的内容信息？</span></div>${radioChoices("informationNeed", [["blind","A. 完全不知道，开盲盒也可以"],["type","B. 至少知道是哪个类型的播客"],["topicGuest","C. 至少知道主题、嘉宾"],["summary","D. 至少知道以上信息，并看过内容简介"],["reviews","E. 知道以上所有信息，并查看评论区评价"],["transcript","F. 还会浏览转写文本"]])}</section>
+      <section class="card question-card"><div class="question-title"><span class="question-number">1</span><span>你一般更倾向于收听：</span></div>${radioChoices("listeningPreference", [["subscribedNew","A. 订阅节目的新播客"],["heardOld","B. 听过的旧播客"],["newInteresting","C. 感兴趣的新内容，不在乎是否订阅"]])}</section>
+      <section class="card question-card"><div class="question-title"><span class="question-number">2</span><span>当你想寻找新的播客内容时，通常从哪里开始？</span></div>${radioChoices("discoveryStart", [["home","A. 平台首页或排行榜推荐"],["search","B. 关键词搜索"],["subscriptions","C. 订阅列表中的节目"],["social","D. 社交媒体推荐"],["friends","E. 朋友推荐"],["ai","F. AI 推荐"],["other","G. 其他（访谈）"]])}</section>
+      <section class="card question-card"><div class="question-title"><span class="question-number">3</span><span>在决定是否收听一集陌生播客时，你最希望知道的是什么？</span></div>${radioChoices("mostWantedInfo", [["what","A. 这期播客究竟讨论什么"],["depth","B. 讨论是否足够深入"],["guest","C. 嘉宾的观点是否值得听"],["context","D. 音频是否适合当前场景或时间"],["interest","E. 内容是否符合自己的兴趣"],["other","F. 其他（访谈）"]])}</section>
+      <section class="card question-card"><div class="question-title"><span class="question-number">4</span><span>在收听播客前，你认为多大程度上需要了解播客的内容信息？</span></div>${radioChoices("informationNeed", [["blind","A. 完全不知道，开盲盒也可以"],["type","B. 至少知道是哪个类型的播客"],["topicGuest","C. 至少知道主题、嘉宾"],["summary","D. 至少知道以上信息，并看过内容简介"],["reviews","E. 知道以上所有信息，并查看评论区评价"],["transcript","F. 还会浏览转写文本"]])}</section>
+      <section class="card question-card"><div class="question-title"><span class="question-number">5</span><span>一般情况下，你需要听多久来决定继续收听还是退出？</span></div>${radioChoices("decisionTime", [["under1","A. 1 分钟内"],["oneToThree","B. 1—3 分钟"],["threeToTen","C. 3—10 分钟"],["tenToThirty","D. 10—30 分钟"],["overThirty","E. 30 分钟以上"]])}</section>
+      <section class="card question-card"><div class="question-title"><span class="question-number">6</span><span>如果听后发现一集播客不符合预期，你通常会怎么做？</span></div>${radioChoices("mismatchAction", [["exit","A. 立即退出"],["seek","B. 跳到其他时间位置继续尝试"],["speed","C. 加速收听"],["finish","D. 仍然继续听完"],["rare","E. 很少出现这种情况"]])}</section>
+      <section class="card question-card"><div class="question-title"><span class="question-number">7</span><span>有一期播客你非常喜欢，你是否试图回溯找到其中某一句言论或观点？</span></div>${radioChoices("refindFrequency", [["often","A. 经常"],["sometimes","B. 偶尔"],["rarely","C. 很少"],["never","D. 从未"]])}</section>
+      <section class="card question-card"><div class="question-title"><span class="question-number">8</span><span>听完一期播客后，你意犹未尽，你会选择什么样的播客继续收听？<small class="muted">（最多选 2 项）</small></span></div>${limitedCheckboxChoices("afterListening", [["nextShow","A. 同栏目的下一期播客"],["system","B. 系统推荐的下一期播客"],["similar","C. 主题类似的播客"],["stop","D. 不再继续听"]], 2, "afterListeningCount")}</section>
       <div class="form-actions"><button class="button" type="submit">提交并继续</button></div>
     </form>`);
 }
@@ -563,18 +653,16 @@ function renderInfoReveal() {
       <div class="episode-grid">${EPISODES.map(episodeChoiceHTML).join("")}</div>
     </section>
     <form id="revealForm" class="card">
-      <h3>第三步：评价你的判断</h3>
-      <div class="scale-block"><label>根据目前看到的信息，你对所选播客的内容有多清楚？</label>${scaleHTML("revealClarity", 10, "0 完全不知道会说什么", "10 完全清楚会说什么", state.answers.infoReveal?.clarity || "")}</div>
-      <div class="scale-block"><label>你对这次选择有多大信心？</label>${scaleHTML("revealConfidence", 7, "1 完全没有信心", "7 非常有信心", state.answers.infoReveal?.confidence || "")}</div>
+      <h3>第三步：确认你的选择</h3>
       <div class="interview-callout"><b>（访谈）</b>哪些信息最影响你的决定？为什么？</div>
       <div class="form-actions"><button class="button" type="submit">确认选择并继续</button></div>
     </form>`);
 }
 
 function renderScenario() {
-  return wrap(`${sectionHeader("Level 2 · Task 2-C", "真实场景任务", "请在你手机中的小宇宙 App 完成以下任务，并边操作边说出你的想法。", `<span class="badge">任务用时将被记录</span>`)}
+  return wrap(`${sectionHeader("Task 4 · 真实场景", "在小宇宙中寻找一期节目", "请在你手机中的小宇宙 App 完成以下任务，并边操作边说出你的想法。", `<span class="badge">任务用时将被记录</span>`)}
     <section class="card scenario-card">
-      <div class="scenario-number">3</div>
+      <div class="scenario-number">4</div>
       <div><h2>在“岩中花述”中找到一期你感兴趣的、与职业发展有关的播客</h2>
         <ol class="instruction-list"><li>请打开手机中的小宇宙 App。</li><li>进入“岩中花述”栏目。</li><li>寻找由鲁豫主持、与职业发展有关、且你比较感兴趣的一期。</li><li>找到后告诉我们你是怎样找到的。</li></ol>
         <div class="notice">研究者不会提供额外内容线索。请按你平时使用播客平台的方式操作。</div>
@@ -584,8 +672,7 @@ function renderScenario() {
       <label class="field-label" for="scenarioEpisode">你最终选择了哪一期？</label>
       <select id="scenarioEpisode" name="episode" required><option value="">请选择</option>${EPISODES.map(episode => `<option value="${episode.id}">${episode.id} 鲁豫对话${episode.guest}｜${episode.title}</option>`).join("")}<option value="other">其他／未在列表中</option></select>
       <div class="interview-callout"><b>（访谈）</b>请口头描述你寻找这期节目的过程，以及过程中查看了哪些信息。</div>
-      <div class="scale-block"><label>这个寻找过程有多容易？</label>${scaleHTML("scenarioEase", 7, "1 非常困难", "7 非常容易")}</div>
-      <div class="form-actions"><button class="button" type="submit">完成真实场景任务</button></div>
+      <div class="form-actions"><button class="button" type="submit">完成研究</button></div>
     </form>`);
 }
 
@@ -594,12 +681,12 @@ function renderContentIntro() {
     <section class="hero-panel">
       <div class="eyebrow">Level 2 · Task 2-D</div>
       <h1>单集内的信息能带来什么帮助？</h1>
-      <p class="lede">接下来有 5 个 3 分钟片段。每个片段对应一种辅助信息，请分别评价它对理解速度和理解深度的帮助。</p>
+      <p class="lede">接下来有 5 个 3 分钟片段。每个片段对应一种辅助信息，请评价它对内容理解的帮助。</p>
       <ul class="instruction-list"><li>每题点击“开始 3 分钟试听”后开始计时。</li><li>需要时打开右侧辅助信息。</li><li>试听结束或认为已经足够判断时，可以提交评价。</li></ul>
       <div class="notice">当前为流程演示版。如果研究者尚未接入正式音频，页面会显示演示波形，但所有计时、辅助信息和评价仍可测试。</div>
       <div class="form-actions"><button class="button" id="contentBegin" type="button">开始第 1 个片段</button></div>
     </section>
-    <aside class="hero-art"><div class="hero-art-copy"><span>5 种信息</span><strong>速度 × 深度</strong></div></aside>
+    <aside class="hero-art"><div class="hero-art-copy"><span>5 种信息</span><strong>理解帮助</strong></div></aside>
   </div>`);
 }
 
@@ -632,8 +719,7 @@ function renderContentTrial() {
     </div>
     <form id="contentRatingForm" class="card" style="margin-top:20px">
       <h2>本题评价</h2>
-      <div class="scale-block"><label>${trial.feature}对你更快理解这段内容的帮助是？</label>${scaleHTML("contentSpeed", 7, "1 完全没有帮助", "7 非常有帮助")}</div>
-      <div class="scale-block"><label>${trial.feature}对你更深入理解这段内容的帮助是？</label>${scaleHTML("contentDepth", 7, "1 完全没有帮助", "7 非常有帮助")}</div>
+      <div class="scale-block"><label>你认为${trial.feature}对内容理解的帮助是？</label>${scaleHTML("contentHelp", 7, "1 完全没有帮助", "7 非常有帮助")}</div>
       <div class="interview-callout"><b>（访谈）</b>你是如何使用这项信息的？它在什么地方有帮助或造成干扰？</div>
       <div class="form-actions"><button class="button" type="submit">${state.contentIndex === CONTENT_TRIALS.length - 1 ? "完成并进入 Task 3" : "提交并进入下一题"}</button></div>
     </form>`);
@@ -643,17 +729,17 @@ function renderStructureIntro() {
   return wrap(`<div class="hero">
     <section class="hero-panel">
       <div class="eyebrow">Level 3 · Task 3</div>
-      <h1>用什么形式呈现信息？</h1>
-      <p class="lede">你将依次观察 12 个界面：4 种组织形式 × 3 种节目数量。每题从“内容理解”和“视觉舒适程度”两个方面评价。</p>
+      <h1>哪一种呈现形式更好？</h1>
+      <p class="lede">你将完成 12 组 A/B 对比。每组同时展示两种界面，请先选择视觉上更舒适的一项，再选择更容易理解内容及信息组织的一项。</p>
       <div class="level-strip">
         <div class="level-item"><b>4 种形式</b><span>列表、网状、树状、分类</span></div>
         <div class="level-item"><b>3 种数量</b><span>5、10、15 期节目</span></div>
-        <div class="level-item"><b>2 个维度</b><span>内容理解、视觉舒适</span></div>
+        <div class="level-item"><b>2 个选择</b><span>视觉舒适、内容理解</span></div>
       </div>
-      <div class="notice green" style="margin-top:22px">请评价当前界面的组织方式本身，不需要挑选或播放节目。</div>
-      <div class="form-actions"><button class="button" id="structureBegin" type="button">开始 12 题评价</button></div>
+      <div class="notice green" style="margin-top:22px">12 组对比会为每位参与者随机排序。请比较界面的组织方式本身，不需要挑选或播放节目。</div>
+      <div class="form-actions"><button class="button" id="structureBegin" type="button">开始 12 组对比</button></div>
     </section>
-    <aside class="hero-art"><div class="hero-art-copy"><span>4 × 3</span><strong>12 个条件</strong></div></aside>
+    <aside class="hero-art"><div class="hero-art-copy"><span>A / B</span><strong>12 组对比</strong></div></aside>
   </div>`);
 }
 
@@ -715,23 +801,24 @@ function structureHTML(type, count) {
 }
 
 function renderStructureTrial() {
-  const condition = state.structureConditions[state.structureIndex];
-  const metadata = STRUCTURE_TYPES[condition.type];
-  return wrap(`${sectionHeader(`Task 3 · ${state.structureIndex + 1}/12`, `${metadata.label}结构 · ${condition.count} 期`, "请观察左侧手机界面的整体信息组织，然后完成右侧评价。", `<span class="badge">${metadata.description}</span>`)}
-    <div class="structure-workspace">
-      <div class="phone-stage">${structureHTML(condition.type, condition.count)}</div>
-      <form id="structureRatingForm" class="card rating-panel">
-        <div class="eyebrow">Current condition</div><div class="condition-name">${metadata.label} × ${condition.count} 期</div>
-        <div class="scale-block"><label>这种布局有多容易帮助你理解节目内容和节目之间的关系？</label>${scaleHTML("structureUnderstanding", 7, "1 完全难以理解", "7 非常容易理解")}</div>
-        <div class="scale-block"><label>这种布局在视觉上有多舒适？</label>${scaleHTML("structureComfort", 7, "1 非常不舒适", "7 非常舒适")}</div>
-        <div class="interview-callout"><b>（访谈）</b>你首先注意到了什么？这种布局有哪些容易或困难的地方？</div>
-        <div class="form-actions"><button class="button" type="submit">${state.structureIndex === state.structureConditions.length - 1 ? "完成结构评价" : "下一种界面"}</button></div>
-      </form>
-    </div>`);
+  const comparison = state.structureComparisons[state.structureIndex];
+  const aMeta = STRUCTURE_TYPES[comparison.a.type];
+  const bMeta = STRUCTURE_TYPES[comparison.b.type];
+  const optionLabel = (side, condition, metadata) => `${side}：${metadata.label}结构 · ${condition.count} 期`;
+  return wrap(`${sectionHeader(`Task 3 · ${state.structureIndex + 1}/12`, `${comparison.id} · A/B 结构对比`, "请先整体观察两个手机界面，再完成下方两项选择。", `<span class="badge">题目顺序已随机</span>`)}
+    <div class="comparison-grid">
+      <section class="comparison-option"><div class="comparison-label"><b>A</b><span>${aMeta.label}结构 · ${comparison.a.count} 期</span></div><div class="phone-stage compact">${structureHTML(comparison.a.type, comparison.a.count)}</div></section>
+      <section class="comparison-option"><div class="comparison-label"><b>B</b><span>${bMeta.label}结构 · ${comparison.b.count} 期</span></div><div class="phone-stage compact">${structureHTML(comparison.b.type, comparison.b.count)}</div></section>
+    </div>
+    <form id="structureComparisonForm" class="card comparison-form">
+      <section class="pair-question"><h3>Q1　哪个界面在第一眼看上去更舒适？</h3>${radioChoices("visualChoice", [["A",optionLabel("A", comparison.a, aMeta)],["B",optionLabel("B", comparison.b, bMeta)]])}</section>
+      <section class="pair-question"><h3>Q2　哪个界面更容易理解节目内容及信息组织？</h3>${radioChoices("understandingChoice", [["A",optionLabel("A", comparison.a, aMeta)],["B",optionLabel("B", comparison.b, bMeta)]])}</section>
+      <div class="form-actions"><button class="button" type="submit">${state.structureIndex === state.structureComparisons.length - 1 ? "完成结构对比" : "下一组对比"}</button></div>
+    </form>`);
 }
 
 function renderInterview() {
-  return wrap(`${sectionHeader("Follow-up interview", "关于四种结构的看法", "请回顾刚才看到的列表、网状、树状与分类结构。", `<span class="badge warm">开放题</span>`)}
+  return wrap(`${sectionHeader("Task 4 · 访谈", "关于四种结构的看法", "请回顾刚才看到的列表、网状、树状与分类结构。", `<span class="badge warm">开放题</span>`)}
     <section class="card">
       <div class="notice green">以下问题由主持人口头提问，参与者不需要在网站中填写文字。</div>
       <div class="interview-grid">
@@ -741,7 +828,7 @@ function renderInterview() {
         <div class="interview-prompt"><b>（访谈）4. 哪种结构视觉上最舒适？有哪些地方需要改进？</b><p class="muted">主持人追问布局、字号、密度和关联表达。</p></div>
       </div>
       <div class="interview-callout"><b>（访谈）</b>还有其他想法吗？</div>
-      <div class="form-actions"><button class="button" id="interviewComplete" type="button">口头访谈已完成</button></div>
+      <div class="form-actions"><button class="button" id="interviewComplete" type="button">口头访谈已完成，进入最后任务</button></div>
     </section>`);
 }
 
@@ -750,10 +837,10 @@ function renderComplete() {
     <section class="hero-panel">
       <div class="eyebrow">Study complete</div>
       <h1>谢谢你的参与</h1>
-      <p class="lede">你已经完成需求调查、信息价值测试和 12 个结构评价条件。</p>
+      <p class="lede">你已经完成需求调查、信息价值测试、12 组结构对比和真实场景任务。</p>
       <p>请在关闭页面前告知研究者，并按需要导出本次记录。</p>
-      <div class="form-actions" style="justify-content:flex-start"><button class="button" id="exportCSV" type="button">导出 CSV</button><button class="button secondary" id="exportJSON" type="button">导出 JSON</button></div>
-      <div class="notice" style="margin-top:24px">当前原型使用本机浏览器存储。正式收集数据前，应接入受控数据库、权限和隐私政策。</div>
+      <div class="form-actions" style="justify-content:flex-start"><button class="button" id="exportCSV" type="button">导出答案 CSV</button><button class="button secondary" id="exportEventsCSV" type="button">导出行为日志 CSV</button><button class="button secondary" id="exportJSON" type="button">导出 JSON</button></div>
+      <div class="notice" style="margin-top:24px">答题过程会先保存在本机浏览器；在 Sites 环境中还会同步到研究数据库。关闭页面前请确认研究者已完成数据核对。</div>
     </section>
     <aside class="hero-art"><div class="hero-art-copy"><span>参与者编号</span><strong>${state.participantId}</strong></div></aside>
   </div>`);
@@ -778,7 +865,7 @@ function updateHeader() {
   let index = STEPS.indexOf(state.step);
   let fraction = 0;
   if (state.step === "contentTrial") fraction = state.contentIndex / CONTENT_TRIALS.length;
-  if (state.step === "structureTrial") fraction = state.structureIndex / state.structureConditions.length;
+  if (state.step === "structureTrial") fraction = state.structureIndex / state.structureComparisons.length;
   const progress = ((index + fraction + 1) / STEPS.length) * 100;
   document.querySelector("#progressBar").style.width = `${Math.min(100, progress)}%`;
   let label = STEP_LABELS[state.step] || "";
@@ -887,11 +974,12 @@ function renderResearcher() {
   stopCountdown();
   const completedContent = Object.keys(state.answers.contentTrials || {}).length;
   const completedStructures = Object.keys(state.answers.structureTrials || {}).length;
+  const aggregateExports = canUseServerAPI() ? `<button class="button" id="researchExportAllAnswers" type="button">导出全部答案 CSV</button><button class="button secondary" id="researchExportAllEvents" type="button">导出全部日志 CSV</button>` : "";
   app.innerHTML = wrap(`${sectionHeader("Researcher console", "研究执行台", `当前参与者：${state.participantId}`, `<span class="badge dark">${STEP_LABELS[state.step]}</span>`)}
     <div class="research-grid">
-      <aside class="card research-nav"><button class="button secondary" id="returnParticipant" type="button">← 返回参与者视图</button><button class="button" id="researchExportCSV" type="button">导出 CSV</button><button class="button secondary" id="researchExportJSON" type="button">导出 JSON</button><button class="button secondary" id="markInterrupted" type="button">标记异常中断</button></aside>
+      <aside class="card research-nav"><button class="button secondary" id="returnParticipant" type="button">← 返回参与者视图</button><button class="button" id="researchExportCSV" type="button">导出本参与者答案 CSV</button><button class="button secondary" id="researchExportEventsCSV" type="button">导出本参与者日志 CSV</button><button class="button secondary" id="researchExportJSON" type="button">导出本参与者 JSON</button>${aggregateExports}<button class="button secondary" id="markInterrupted" type="button">标记异常中断</button></aside>
       <div>
-        <div class="stats"><div class="stat"><span>事件数</span><b>${state.events.length}</b></div><div class="stat"><span>单集内测试</span><b>${completedContent}/5</b></div><div class="stat"><span>结构条件</span><b>${completedStructures}/12</b></div></div>
+        <div class="stats"><div class="stat"><span>事件数</span><b>${state.events.length}</b></div><div class="stat"><span>单集内测试</span><b>${completedContent}/5</b></div><div class="stat"><span>结构对比</span><b>${completedStructures}/12</b></div></div>
         <section class="card"><h2>阶段跳转</h2><div class="jump-grid">${STEPS.map((step, index) => `<button class="jump-button" type="button" data-research-jump="${step}">${index + 1}. ${STEP_LABELS[step]}</button>`).join("")}</div></section>
         <section class="card"><h2>最近行为日志</h2><div class="log-box">${state.events.slice(-80).reverse().map(event => `${escapeHTML(event.timestamp)}　${escapeHTML(event.type)}　${escapeHTML(event.target)}　${escapeHTML(JSON.stringify(event.payload))}`).join("<br>") || "暂无记录"}</div></section>
       </div>
@@ -912,11 +1000,82 @@ function exportJSON() {
   download(`${state.participantId}.json`, JSON.stringify(state, null, 2), "application/json");
 }
 
+function csvText(rows) {
+  return rows.map(row => row.map(value => `"${String(value ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
+}
+
+function answerRows() {
+  const rows = [["participant_id", "study_version", "question_id", "stage", "measure", "response", "duration_ms", "metadata"]];
+  const add = (questionId, stage, measure, response, durationMs = "", metadata = "") => {
+    const normalized = Array.isArray(response) ? response.join(";") : response;
+    rows.push([state.participantId, STUDY_VERSION, questionId, stage, measure, normalized, durationMs, typeof metadata === "string" ? metadata : JSON.stringify(metadata)]);
+  };
+  const profile = state.answers.profile || {};
+  add("P1-01", "Pre-interview", "participant_id", state.participantId, profile.durationMs);
+  add("P1-02", "Pre-interview", "gender", profile.gender, profile.durationMs);
+  add("P1-03", "Pre-interview", "age", profile.age, profile.durationMs);
+  add("P1-04", "Pre-interview", "listening_frequency", profile.listeningFrequency, profile.durationMs);
+  add("P1-05", "Pre-interview", "platforms", profile.platforms, profile.durationMs);
+  add("P1-06", "Pre-interview", "podcast_types", profile.podcastTypes, profile.durationMs);
+  add("P1-06.5", "Pre-interview", "listening_scenes", profile.listeningScenes, profile.durationMs);
+  add("P1-08", "Pre-interview", "creation_experience", profile.creationExperience, profile.durationMs);
+  add("P1-09", "Pre-interview", "show_familiarity", profile.showFamiliarity, profile.durationMs);
+
+  const needs = state.answers.needs || {};
+  add("T1-01", "Task 1", "listening_preference", needs.listeningPreference, needs.durationMs);
+  add("T1-02", "Task 1", "discovery_start", needs.discoveryStart, needs.durationMs);
+  add("T1-03", "Task 1", "most_wanted_information", needs.mostWantedInfo, needs.durationMs);
+  add("T1-07", "Task 1", "information_need", needs.informationNeed, needs.durationMs);
+  add("T1-03-duration", "Task 1", "decision_time", needs.decisionTime, needs.durationMs, { sourceQuestionId: "T1-03", note: "源表中编号重复，导出时添加 duration 后缀" });
+  add("T1-04", "Task 1", "mismatch_action", needs.mismatchAction, needs.durationMs);
+  add("T1-05", "Task 1", "refind_frequency", needs.refindFrequency, needs.durationMs);
+  add("T1-06", "Task 1", "after_listening", needs.afterListening, needs.durationMs);
+
+  const ranking = state.answers.infoRanking || {};
+  add("T2-E01", "Task 2", "information_ranking", ranking.order, ranking.durationMs);
+  const reveal = state.answers.infoReveal || {};
+  add("T2-E02", "Task 2", "selected_episode", reveal.episode, reveal.durationMs, { selectedFields: reveal.fields || [] });
+  Object.entries(state.answers.contentTrials || {}).forEach(([index, trial]) => add(`T2-C0${Number(index) + 1}`, "Task 2", "helpfulness_1_to_7", trial.help, trial.elapsedMs, {
+    feature: trial.feature,
+    featureOpened: trial.featureOpened,
+    audioConfigured: trial.audioConfigured
+  }));
+  Object.values(state.answers.structureTrials || {}).sort((a, b) => a.questionId.localeCompare(b.questionId)).forEach(trial => {
+    const metadata = { aType: trial.aType, aCount: trial.aCount, bType: trial.bType, bCount: trial.bCount };
+    add(trial.questionId, "Task 3", "visual_comfort_choice", trial.visualChoice, trial.durationMs, metadata);
+    add(trial.questionId, "Task 3", "understanding_choice", trial.understandingChoice, trial.durationMs, { ...metadata, dimensionsAgree: trial.dimensionsAgree });
+  });
+  const interview = state.answers.interview || {};
+  add("T4-01", "Task 4", "oral_interview_completed", interview.completed, interview.durationMs);
+  const scenario = state.answers.scenario || {};
+  add("T4-02", "Task 4", "selected_episode", scenario.episode, scenario.durationMs, { responseMode: "task_and_oral_interview" });
+  return rows;
+}
+
 function exportCSV() {
+  download(`${state.participantId}-answers.csv`, csvText(answerRows()), "text/csv;charset=utf-8");
+}
+
+function exportEventsCSV() {
   const rows = [["participant_id", "study_version", "step", "event_type", "target", "timestamp", "payload"]];
   state.events.forEach(event => rows.push([state.participantId, STUDY_VERSION, event.step, event.type, event.target, event.timestamp, JSON.stringify(event.payload)]));
-  const csv = rows.map(row => row.map(value => `"${String(value ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
-  download(`${state.participantId}.csv`, csv, "text/csv;charset=utf-8");
+  download(`${state.participantId}-events.csv`, csvText(rows), "text/csv;charset=utf-8");
+}
+
+async function exportAggregateCSV(kind) {
+  if (!researcherSessionToken) return toast("请重新进入研究者视图并验证访问令牌");
+  try {
+    await syncServerState();
+    const response = await fetch(`/api/research/${kind}.csv`, {
+      headers: { "authorization": `Bearer ${researcherSessionToken}` }
+    });
+    if (!response.ok) return toast(response.status === 401 ? "研究者访问令牌无效" : "全部数据导出失败");
+    const content = await response.text();
+    const date = new Date().toISOString().slice(0, 10);
+    download(`yzh-study-${kind}-${date}.csv`, content, "text/csv;charset=utf-8");
+  } catch {
+    toast("无法连接研究数据服务");
+  }
 }
 
 function loadLocalConfig() {
@@ -933,7 +1092,7 @@ function loadLocalConfig() {
 
 async function openResearcherAccess() {
   const configured = await loadLocalConfig();
-  document.querySelector("#accessHint").textContent = configured ? "请输入本地研究者访问码。" : "尚未找到本地 config.js。请先复制 config.example.js 并设置访问码。";
+  document.querySelector("#accessHint").textContent = configured ? "请输入本地研究者访问码。" : canUseServerAPI() ? "请输入 Sites 中配置的研究者访问令牌。" : "尚未找到本地 config.js。请先复制 config.example.js 并设置访问码。";
   accessDialog.showModal();
   window.setTimeout(() => document.querySelector("#accessCode").focus(), 50);
 }
@@ -942,12 +1101,26 @@ document.querySelector("#backButton").addEventListener("click", goBack);
 document.querySelector("#restartButton").addEventListener("click", resetStudy);
 document.querySelector("#researcherButton").addEventListener("click", openResearcherAccess);
 document.querySelector("#accessCancel").addEventListener("click", () => accessDialog.close());
-document.querySelector("#accessForm").addEventListener("submit", event => {
+document.querySelector("#accessForm").addEventListener("submit", async event => {
   event.preventDefault();
   const configuredCode = window.YZH_STUDY_CONFIG?.researcherAccessCode || "";
   const enteredCode = document.querySelector("#accessCode").value;
-  if (!configuredCode) return toast("研究者访问尚未配置");
-  if (enteredCode !== configuredCode) return toast("访问码不正确");
+  if (configuredCode && enteredCode !== configuredCode) return toast("访问码不正确");
+  if (!configuredCode) {
+    if (!canUseServerAPI()) return toast("研究者访问尚未配置");
+    try {
+      const response = await fetch("/api/research/authorize", {
+        method: "POST",
+        headers: { "authorization": `Bearer ${enteredCode}` }
+      });
+      if (!response.ok) return toast("访问令牌不正确或尚未配置");
+      researcherSessionToken = enteredCode;
+    } catch {
+      return toast("无法连接研究数据服务");
+    }
+  } else {
+    researcherSessionToken = enteredCode;
+  }
   document.querySelector("#accessCode").value = "";
   accessDialog.close();
   log("researcher_view_open");
@@ -1007,11 +1180,14 @@ document.addEventListener("click", event => {
     state.answers.interview = { completed: true, durationMs: pageDuration() };
     log("interview_complete", "", state.answers.interview);
     save();
-    goTo("complete");
+    goTo("scenario");
   }
 
   if (event.target.id === "exportCSV" || event.target.id === "researchExportCSV") exportCSV();
+  if (event.target.id === "exportEventsCSV" || event.target.id === "researchExportEventsCSV") exportEventsCSV();
   if (event.target.id === "exportJSON" || event.target.id === "researchExportJSON") exportJSON();
+  if (event.target.id === "researchExportAllAnswers") exportAggregateCSV("answers");
+  if (event.target.id === "researchExportAllEvents") exportAggregateCSV("events");
   if (event.target.id === "returnParticipant") render();
   if (event.target.id === "markInterrupted") {
     state.answers.interrupted = { step: state.step, timestamp: new Date().toISOString() };
@@ -1026,16 +1202,26 @@ document.addEventListener("click", event => {
   }
 });
 
+window.addEventListener("pagehide", () => {
+  if (!canUseServerAPI() || !navigator.sendBeacon) return;
+  const body = new Blob([JSON.stringify(syncPayload())], { type: "application/json" });
+  navigator.sendBeacon(SYNC_ENDPOINT, body);
+});
+
 document.addEventListener("change", event => {
   if (event.target.id === "consentCheck") document.querySelector("#introNext").disabled = !event.target.checked;
-  if (event.target.matches("[data-max-three]")) {
-    const checked = [...document.querySelectorAll("[data-max-three]:checked")];
-    if (checked.length > 3) {
+  if (event.target.matches("[data-choice-limit]")) {
+    const limit = Number(event.target.dataset.choiceLimit);
+    const group = event.target.dataset.choiceGroup;
+    const selector = `[data-choice-group="${CSS.escape(group)}"]:checked`;
+    const checked = [...document.querySelectorAll(selector)];
+    if (checked.length > limit) {
       event.target.checked = false;
-      toast("最多选择 3 项");
+      toast(`最多选择 ${limit} 项`);
     }
-    const count = document.querySelectorAll("[data-max-three]:checked").length;
-    document.querySelector("#goalCount").textContent = `已选 ${count}/3`;
+    const count = document.querySelectorAll(selector).length;
+    const counter = document.querySelector(`#${CSS.escape(event.target.dataset.counterId)}`);
+    if (counter) counter.textContent = `已选 ${count}/${limit}`;
   }
 });
 
@@ -1045,10 +1231,12 @@ document.addEventListener("submit", event => {
     const formData = new FormData(event.target);
     const platforms = formData.getAll("platforms");
     const podcastTypes = formData.getAll("podcastTypes");
-    const discoveryChannels = formData.getAll("discoveryChannels");
+    const listeningScenes = formData.getAll("listeningScenes");
     if (!platforms.length) return toast("请至少选择一个常用播客平台");
     if (!podcastTypes.length) return toast("请至少选择一种常听的播客类型");
-    if (!discoveryChannels.length) return toast("请至少选择一个寻找播客的渠道");
+    if (podcastTypes.length > 3) return toast("常听的播客类型最多选择 3 项");
+    if (!listeningScenes.length) return toast("请至少选择一个收听播客的场景");
+    if (listeningScenes.length > 3) return toast("收听场景最多选择 3 项");
     state.answers.profile = {
       participantId: state.participantId,
       gender: formData.get("gender"),
@@ -1056,7 +1244,7 @@ document.addEventListener("submit", event => {
       listeningFrequency: formData.get("listeningFrequency"),
       platforms,
       podcastTypes,
-      discoveryChannels,
+      listeningScenes,
       creationExperience: formData.get("creationExperience"),
       showFamiliarity: formData.get("showFamiliarity"),
       durationMs: pageDuration()
@@ -1068,10 +1256,11 @@ document.addEventListener("submit", event => {
 
   if (event.target.id === "needsForm") {
     event.preventDefault();
-    const goals = [...event.target.querySelectorAll("input[name='goals']:checked")].map(input => input.value);
-    if (!goals.length) return toast("请至少选择一个最常见的使用目的");
+    const afterListening = [...event.target.querySelectorAll("input[name='afterListening']:checked")].map(input => input.value);
+    if (!afterListening.length) return toast("请至少选择一种继续收听的方式");
+    if (afterListening.length > 2) return toast("继续收听的方式最多选择 2 项");
     const data = collectForm(event.target);
-    state.answers.needs = { ...data, goals, durationMs: pageDuration() };
+    state.answers.needs = { ...data, afterListening, durationMs: pageDuration() };
     log("needs_complete", "", state.answers.needs);
     save();
     goTo("infoRank");
@@ -1081,38 +1270,35 @@ document.addEventListener("submit", event => {
     event.preventDefault();
     if (!state.selectedFields.length) return toast("请至少选择一类信息");
     if (!state.selectedEpisode) return toast("请选择一集想听的节目");
-    if (!validateScale(["revealClarity", "revealConfidence"])) return;
-    const data = collectForm(event.target);
     state.answers.infoReveal = {
       fields: [...state.selectedFields], episode: state.selectedEpisode,
-      clarity: Number(data.revealClarity), confidence: Number(data.revealConfidence), durationMs: pageDuration()
+      durationMs: pageDuration()
     };
     log("info_reveal_complete", state.selectedEpisode, state.answers.infoReveal);
     save();
-    goTo("scenario");
+    goTo("contentIntro");
   }
 
   if (event.target.id === "scenarioForm") {
     event.preventDefault();
-    if (!validateScale(["scenarioEase"])) return;
     const data = collectForm(event.target);
-    state.answers.scenario = { episode: data.episode, ease: Number(data.scenarioEase), durationMs: pageDuration() };
+    state.answers.scenario = { episode: data.episode, durationMs: pageDuration() };
     log("scenario_complete", data.episode, state.answers.scenario);
     save();
-    goTo("contentIntro");
+    goTo("complete");
   }
 
   if (event.target.id === "contentRatingForm") {
     event.preventDefault();
     if (!state.contentStarts[state.contentIndex]) return toast("请先开始试听计时");
-    if (!validateScale(["contentSpeed", "contentDepth"])) return;
+    if (!validateScale(["contentHelp"])) return;
     const data = collectForm(event.target);
     state.answers.contentTrials ||= {};
     const trial = CONTENT_TRIALS[state.contentIndex];
     const elapsedMs = Math.min(Date.now() - state.contentStarts[state.contentIndex], 180000);
     state.answers.contentTrials[state.contentIndex] = {
       feature: trial.feature,
-      speedHelp: Number(data.contentSpeed), depthHelp: Number(data.contentDepth),
+      help: Number(data.contentHelp),
       featureOpened: Boolean(state.featureOpen[state.contentIndex]), elapsedMs,
       audioConfigured: Boolean(audioSource(state.contentIndex))
     };
@@ -1128,20 +1314,25 @@ document.addEventListener("submit", event => {
     }
   }
 
-  if (event.target.id === "structureRatingForm") {
+  if (event.target.id === "structureComparisonForm") {
     event.preventDefault();
-    if (!validateScale(["structureUnderstanding", "structureComfort"])) return;
     const data = collectForm(event.target);
-    const condition = state.structureConditions[state.structureIndex];
+    const comparison = state.structureComparisons[state.structureIndex];
     state.answers.structureTrials ||= {};
     state.answers.structureTrials[state.structureIndex] = {
-      ...condition,
-      understanding: Number(data.structureUnderstanding), comfort: Number(data.structureComfort),
+      questionId: comparison.id,
+      aType: comparison.a.type,
+      aCount: comparison.a.count,
+      bType: comparison.b.type,
+      bCount: comparison.b.count,
+      visualChoice: data.visualChoice,
+      understandingChoice: data.understandingChoice,
+      dimensionsAgree: data.visualChoice === data.understandingChoice,
       durationMs: pageDuration()
     };
-    log("structure_trial_complete", `${condition.type}-${condition.count}`, state.answers.structureTrials[state.structureIndex]);
+    log("structure_comparison_complete", comparison.id, state.answers.structureTrials[state.structureIndex]);
     save();
-    if (state.structureIndex === state.structureConditions.length - 1) goTo("interview");
+    if (state.structureIndex === state.structureComparisons.length - 1) goTo("interview");
     else {
       state.structureIndex += 1;
       state.pageEnteredAt = Date.now();

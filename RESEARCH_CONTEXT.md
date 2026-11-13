@@ -2,188 +2,102 @@
 
 ## Evidence and status
 
-This document describes the revised study specified in the current project conversation and implemented in the accessible project files on 2026-11-01. It does not claim access to other conversations, external datasets, private repositories, or participant records.
-
-The revised three-level design below supersedes the earlier retrieval-focused Task 1 / Task 2-A / Task 2-B / Task 2-C flow. The old implementation remains available through Git history, not through the current participant flow.
+This document describes the study implemented from the current project files and the supplied workbook `Podcasts_Indicators_v2.xlsx`. It does not claim access to other conversations, private datasets, or participant records.
 
 ## Research objective
 
-The study investigates how podcast listeners discover, understand, evaluate, and revisit podcast content, and how episode information should be selected and organized to support those activities.
+The study examines how listeners choose, understand, revisit, and compare podcast content, and which information and visual structures best support those activities.
 
-The project is organized around three questions:
+The research is organized around three levels:
 
-1. **What are users trying to accomplish, and where do existing podcast platforms leave information gaps?**
-2. **Which information types materially help users understand an unfamiliar episode or make a listening decision?**
-3. **How should multiple podcast episodes be organized visually at different information densities?**
+1. discover listener needs and information gaps;
+2. validate the value of episode-level and within-episode information;
+3. compare ways of organizing multiple episodes.
 
-## Pre-task participant form
+## Pre-interview form
 
-Before any task, the website records an automatically generated participant ID and structured responses for gender, age, podcast listening frequency, commonly used platforms, frequently heard podcast types, podcast discovery channels, podcast-creation experience, and familiarity with “岩中花述.” No name or contact information is requested.
+Before the tasks, the website records:
 
-Open-ended explanations are not typed into the participant website. Questions that require reasons, descriptions, or personal interpretations are marked **（访谈）** and are asked orally by the moderator.
+- automatically generated participant ID;
+- gender and age;
+- podcast listening frequency;
+- commonly used platforms;
+- up to three frequently heard podcast types;
+- up to three listening scenarios;
+- podcast-creation experience;
+- familiarity with 《岩中花述》.
 
-## Three-level methodology
+No name or contact details are requested. Subjective explanations are marked **（访谈）** and handled orally.
 
-### Level 1 — Discover needs
+## Task 1 — Listener needs
 
-Participants answer seven questions about:
+Eight structured items record:
 
-- their most common reasons for opening a podcast platform (up to three);
-- where they begin when looking for new content;
-- their greatest uncertainty when considering an unfamiliar episode;
-- what they do after 10–15 minutes when an episode does not meet expectations;
-- how often they want to re-find a sentence or discussion;
-- what they listen to after completing an episode;
-- how much information they need before listening.
+1. preference for subscribed new episodes, previously heard episodes, or interesting new content;
+2. starting point for new-content discovery, including AI recommendation;
+3. the information most wanted before choosing an unfamiliar episode;
+4. how much information is needed before listening;
+5. time needed to decide whether to continue or exit;
+6. behavior when an episode does not meet expectations;
+7. frequency of trying to re-find a statement or viewpoint;
+8. up to two choices for continued listening after a satisfying episode.
 
-These items capture retrieval intent, information gaps, listening context, abandonment behavior, and revisit needs.
+## Task 2 — Information value
 
-### Level 2 — Validate information value
+### T2-E01: direct ranking
 
-Level 2 contains four complementary tasks.
+Participants rank 13 information types: title, host, duration, topic tags, summary, comment overview, play count, similar podcasts, transcript, topic timeline, timestamped comments, sentiment analysis, and audio-analysis features.
 
-#### Task 2-A: direct information ranking
+### T2-E02: progressive disclosure
 
-Participants rank 13 episode-level information types:
+Participants reveal up to three information types and choose one episode. The site records the chosen fields, their interaction sequence, the selected episode, and duration. Reasons are discussed orally.
 
-1. title;
-2. host;
-3. duration;
-4. topic tags;
-5. summary;
-6. comment overview;
-7. play count;
-8. similar podcasts;
-9. transcript;
-10. topic segmentation/timeline;
-11. timestamped comments;
-12. sentiment analysis;
-13. audio-analysis features.
+### T2-C01 to T2-C05: within-episode assistance
 
-Ranking is supported by drag-and-drop and accessible up/down controls. The final full order is recorded.
+Five three-minute trial shells cover transcript, topic timeline, timestamped comments, sentiment analysis, and audio-analysis features. Each feature receives one perceived-helpfulness rating from 1 (no help) to 7 (very helpful). The site also records whether the feature was opened, elapsed time, and whether formal audio was configured.
 
-#### Task 2-B: progressive disclosure and episode choice
+The repository contains demonstration panels but no licensed research audio.
 
-Participants may reveal up to three information types across a set of unfamiliar episodes, then choose one episode to listen to. The interface records the field selection sequence and final episode choice.
+## Task 3 — Pairwise structure comparison
 
-After selection, participants report:
+Participants complete 12 A/B comparisons covering list, network, tree, and category structures at 5, 10, and 15 episodes. The 12 comparison questions are shuffled reproducibly from the participant ID.
 
-- content clarity from 0 (no idea what the episode will discuss) to 10 (completely clear);
-- choice confidence from 1 to 7;
-- a verbal interview prompt about which information influenced the decision; no text response is entered in the website.
+For each pair, participants first select which interface looks more visually comfortable, then select which is easier for understanding content and information organization. The site records both choices, pair metadata, duration, and whether the two choices agree.
 
-This task tests revealed preferences and information combinations rather than only stated importance.
+This pairwise design replaces the earlier plan to give two Likert ratings to each of 12 standalone conditions.
 
-#### Task 2-C: real-app scenario and interview
+## Task 4 — Oral interview and real-app task
 
-Participants open the Xiaoyuzhou app on their own phone and find an episode in the “岩中花述” channel that is hosted by Lu Yu, relates to career development, and interests them personally.
+The moderator asks participants to discuss the four structures. No interview text is entered into the participant website.
 
-They select the chosen episode from a structured list and rate task ease from 1 to 7. Their search path is discussed orally as a marked interview prompt. Page duration is recorded. The website itself does not control or record the external app.
-
-#### Task 2-D: within-episode information assistance
-
-Participants complete five trials. Each trial is designed around a three-minute audio segment and one information aid:
-
-1. transcript;
-2. topic segmentation/timeline;
-3. timestamped comments;
-4. sentiment analysis;
-5. audio-analysis features.
-
-For each trial, participants can open or close the information aid and rate its help on:
-
-- speed of understanding (1–7);
-- depth of understanding (1–7).
-
-The site records whether the aid was opened, elapsed listening time up to three minutes, whether a formal audio source was configured, and the two ratings. A marked interview prompt asks how the participant used the aid; no text response is entered.
-
-The current repository includes demonstration information panels but no licensed research audio. Formal audio files are an unresolved material dependency.
-
-### Level 3 — Determine presentation form
-
-Participants evaluate 12 conditions:
-
-- four structures: list, network, tree, and category clusters;
-- three episode counts: 5, 10, and 15.
-
-Conditions are deterministically shuffled from the generated participant ID and stored in state, so order is reproducible for a participant.
-
-Each condition is presented in a phone-ratio frame. Participants rate:
-
-- how easily the layout supports understanding of episode content and relationships (1–7);
-- visual comfort (1–7).
-
-A marked interview prompt asks what the participant noticed first after each condition. The final oral interview asks which structure is fastest to understand, best for relationships, most scalable, and most visually comfortable. The website only records that the interview stage was completed.
-
-## Study phases
-
-1. Study information and consent.
-2. Structured participant-information form.
-3. Level 1 needs questionnaire.
-4. Task 2-A information ranking.
-5. Task 2-B progressive disclosure and episode choice.
-6. Task 2-C real-app scenario.
-7. Task 2-D instructions and five within-episode trials.
-8. Level 3 instructions and twelve structure conditions.
-9. Oral structure interview prompts.
-10. Completion and local export.
+Participants then open Xiaoyuzhou and find a Lu Yu-hosted episode in 《岩中花述》 that relates to career development and interests them. The website records the selected episode and task duration; the search path is described orally.
 
 ## Variables and measures
 
 | Category | Variables / measures |
 | --- | --- |
-| Participant profile | Participant ID, gender, age, listening frequency, platforms, podcast types, discovery channels, creation experience, show familiarity |
-| Background needs | Platform goal selection, discovery start, uncertainty, mismatch response, revisit frequency, post-listening behavior, pre-listening information need |
-| Stated information value | Full rank order of 13 information types; ranking changes and duration |
-| Revealed information value | Selected fields and order, field combination, selected episode, clarity, confidence, duration |
-| Real-platform behavior | Chosen episode, ease rating, task duration, moderator-observed think-aloud behavior outside the website |
-| Within-episode assistance | Feature type, audio/material status, feature opened, elapsed time, speed-help rating, depth-help rating |
-| Presentation structure | Structure type, episode count, condition order, understanding rating, comfort rating, duration |
-| Oral interview topics | Search path, information-choice reasons, feature use, structure preferences and improvement suggestions; not entered in the participant website |
-| Operational | Participant ID, study version, timestamps, page transitions, restart/back behavior, exports, interruption marker |
-
-## Rationale
-
-- Level 1 establishes actual needs before exposing participants to proposed features.
-- Direct ranking captures explicit priorities, while progressive disclosure captures behavioral trade-offs.
-- The real-app task grounds the study in an existing platform and reveals natural search strategies.
-- Within-episode trials separate five assistance concepts and rate both speed and depth, which may not move together.
-- The 4 × 3 structure design separates structural grammar from information density.
-- Using the same two structure ratings across all 12 conditions enables within-participant comparison.
-- Final interviews help explain why numerical ratings differ.
+| Profile | ID, gender, age, frequency, platforms, podcast types, listening scenarios, creation experience, familiarity |
+| Listener needs | Listening preference, discovery start, wanted information, pre-listening information need, decision time, mismatch action, revisit frequency, continued-listening choices |
+| Information ranking | Full order of 13 fields, interaction changes, duration |
+| Progressive disclosure | Revealed fields, reveal sequence, selected episode, duration |
+| Within-episode assistance | Feature, perceived helpfulness 1–7, feature opened, elapsed time, audio status |
+| Structure comparison | Pair ID, A/B structures and counts, visual choice, understanding choice, agreement, duration |
+| Real-platform task | Selected episode, duration, moderator-observed search process |
+| Operational | Study version, timestamps, page transitions, back/restart use, exports, interruption marker |
 
 ## Confirmed decisions
 
-- The current participant flow uses the three-level framework described above.
-- A structured participant-information form appears before every task.
-- Subjective explanations are marked as oral interview prompts and have no participant text boxes.
-- Level 1 contains seven needs questions; the first allows up to three choices.
-- Episode-level information ranking includes all 13 specified information types.
-- Progressive disclosure permits at most three additional information types.
-- The real-app task is completed in Xiaoyuzhou on the participant’s phone.
-- The five within-episode features are transcript, topic timeline, timestamped comments, sentiment analysis, and audio-analysis features.
-- Each within-episode trial is capped at three minutes and uses speed/depth ratings.
-- Level 3 uses 4 structures × 3 counts (5/10/15) for 12 conditions.
-- Level 3 ratings are content/relationship understanding and visual comfort.
-- A final qualitative interview covers the four structures.
+- The supplied workbook supersedes the previous seven-question Task 1 and standalone-condition Task 3 implementation.
+- Open-ended subjective answers are oral interview prompts, not text inputs.
+- Task 3 uses the 12 pairings listed in the workbook and randomizes question order.
+- Visual comfort is asked before understanding in each Task 3 comparison.
+- The workbook contains a duplicate `T1-03` identifier. The export preserves the first as `T1-03` and labels the decision-time item `T1-03-duration`, with the source ID noted in metadata.
 
-## Assumptions in the prototype
+## Assumptions and unresolved questions
 
-- The episode set and metadata embedded in the interface are demonstration materials until their provenance is verified.
-- A 1–7 response scale is appropriate for the two within-episode and two structure ratings.
-- “Content understanding” in Task 3 includes both individual episode cues and visible relationships between episodes.
-- Deterministic shuffling is acceptable; a formal counterbalancing plan has not yet been approved.
-- Participants can access Xiaoyuzhou and the “岩中花述” channel on a personal phone.
-- Three minutes is counted from the participant pressing the start button, not from verified audio playback.
-
-## Unresolved research questions
-
-- Which exact five audio segments will be used, and are they equivalent in difficulty, topic familiarity, speaking style, and emotional intensity?
-- Will each participant hear five different segments or matched variants of one segment?
-- Is a control condition without supplemental information required for the within-episode trials?
-- Should feature and audio order be randomized, counterbalanced, or fixed?
-- What constitutes an objective comprehension outcome, if the study intends to claim improved understanding rather than perceived help?
-- Which episode metadata values are verified and which are simulated?
-- What participant eligibility, prior familiarity, exclusion, missing-data, and timeout rules will be used?
-- What is the target sample size and analysis plan?
-- What consent, retention, deletion, and screen-recording policy will govern formal data collection?
+- Episode metadata in the interface remains demonstration material until provenance is verified.
+- The five audio trials need licensed, difficulty-matched materials.
+- Feature order is currently fixed; a counterbalancing decision is unresolved.
+- The helpfulness scale measures perceived help, not objective comprehension accuracy.
+- Participant eligibility, sample size, exclusion rules, interview coding, and formal analysis remain unresolved.
+- Consent, recording, retention, deletion, and secure cloud storage policies must be finalized before formal collection.

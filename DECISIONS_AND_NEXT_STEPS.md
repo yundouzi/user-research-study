@@ -1,117 +1,67 @@
 # Decisions and Next Steps
 
-## Evidence and scope
-
-This handoff reflects the revised study described in the current conversation and the current workspace files as of 2026-11-01. It does not summarize inaccessible conversations or external project history.
-
 ## Confirmed current decisions
 
-### Research design
+- `Podcasts_Indicators_v2.xlsx` is the current question and measurement source.
+- Participant-facing open-ended text fields are excluded. Subjective prompts are marked “（访谈）”.
+- The pre-interview form collects podcast types and listening scenarios with a maximum of three selections each.
+- Task 1 contains eight structured items; continued-listening behavior allows two selections.
+- Task 2 retains the 13-item ranking and a three-field progressive-disclosure limit.
+- Each of the five within-episode features receives one 1–7 helpfulness rating.
+- Task 3 uses 12 A/B comparisons rather than 12 standalone Likert evaluations.
+- Each comparison asks visual comfort first and understanding second.
+- Task 3 question order is shuffled reproducibly for each participant.
+- Task 4 contains the oral structure interview and the final Xiaoyuzhou search task.
+- Answer CSV and event CSV are separate exports; JSON retains the complete local record.
+- The duplicate source identifier `T1-03` is disambiguated as `T1-03-duration` for the decision-time item.
+- The existing application is adapted rather than recreated for ChatGPT Sites.
+- Browser storage remains a local fallback; formal Sites collection uses D1 through a same-origin Worker API.
+- Aggregate answer and event CSV exports require a server-side researcher token.
+- The first Sites milestone is a saved, undeployed version. No production URL should be created without later explicit approval.
 
-- The revised study follows three levels: discover needs, validate information value, and determine presentation form.
-- A structured participant-information form appears after consent and before all tasks.
-- It collects the generated participant ID, gender, age, listening frequency, platforms, podcast types, discovery channels, creation experience, and “岩中花述” familiarity.
-- Open-ended subjective answers are not typed into the site; they are labeled “（访谈）” and handled orally.
-- The earlier retrieval-focused flow is superseded in the current interface.
-- Level 1 contains seven participant questions about discovery, uncertainty, abandonment, revisit, and information needs.
-- The first Level 1 question permits up to three selections.
-- Level 2 includes both direct ranking and progressive disclosure because they measure stated and revealed information preferences differently.
-- Thirteen information types are included in ranking.
-- Progressive disclosure permits up to three information types before episode selection.
-- Participants rate content clarity from 0–10 and selection confidence from 1–7.
-- A real Xiaoyuzhou phone task asks participants to find an interesting career-related “岩中花述” episode and describe their process.
-- Five within-episode trials cover transcript, topic timeline, timestamped comments, sentiment analysis, and audio-analysis features.
-- Within-episode help is rated separately for speed and depth on 1–7 scales.
-- Task 3 compares list, network, tree, and category layouts at 5, 10, and 15 episodes.
-- Each of the twelve Task 3 conditions receives understanding and visual-comfort ratings.
-- A final interview asks participants to compare the four structures.
+## Superseded alternatives
 
-### Interaction and operation
-
-- Back and restart controls remain visible throughout the participant flow.
-- Ranking supports both drag-and-drop and arrow buttons.
-- Structure conditions are stored in a reproducible participant-specific order.
-- Formal audio files are not fabricated; the prototype exposes an explicit materials configuration and demonstration mode.
-- Participant progress and events remain local until CSV/JSON export.
-- CSV/JSON exports contain structured task responses but not moderator interview notes.
-- The researcher view remains a local prototype tool and is not treated as secure authentication.
-
-## Superseded decisions
-
-The following decisions belong to the previous prototype and are no longer part of the current participant flow:
-
-- four assisted/unassisted retrieval trials;
-- the Beneath the Conversation site as a Task 1 condition;
-- separate Task 2-A retrieval tasks using the four structures;
-- structure evaluation as “ease of understanding” and “crowding” only;
-- the earlier title-only Task 2-C flow with a seven-field ranking;
-- the previous sequence of Task 1 feedback, Task 2-A, Task 2-B, and Task 2-C.
-
-The related assets remain in the repository for provenance and may be removed later if no longer needed.
+- The seven-question Task 1 beginning with “打开播客平台的目的”.
+- Content clarity and choice-confidence ratings after progressive disclosure.
+- Separate speed-help and depth-help ratings for each within-episode feature.
+- Two Likert scales for every standalone Task 3 condition.
+- Placing the Xiaoyuzhou scenario before the within-episode and structure tasks.
+- The earlier assisted/unassisted retrieval experiment and Beneath the Conversation condition.
+- Relying only on `localStorage` and manual per-participant export for formal cloud collection.
+- Publishing immediately to obtain a review URL; every Sites deployment URL is production.
 
 ## Current progress
 
-### Completed in the revised prototype
-
-- New three-level participant flow.
-- Pre-task participant-information form and validation.
-- Removal of participant-facing open-text fields; subjective prompts are marked for interview.
-- All seven Level 1 questions and validation.
-- Thirteen-item information ranking.
-- Progressive disclosure, episode choice, clarity/confidence ratings, and explanation.
-- Real-app task instructions, process capture, ease rating, and timing.
-- Five three-minute within-episode trial shells with feature-specific panels.
-- Audio-source configuration file and visible demonstration mode.
-- Twelve structure conditions using four distinct layouts and three counts.
-- Participant-specific stored condition order.
-- Two ratings per structure condition and final qualitative interview.
-- Versioned local state, event logging, CSV/JSON export, stage navigation, and researcher console.
-- Separation of HTML, CSS, JavaScript, and non-secret study-material configuration.
-
-### Not completed
-
-- Formal audio selection, editing, licensing, loudness matching, and integration.
-- Objective comprehension questions or accuracy measures.
-- Approved randomization/counterbalancing strategy.
-- Verified metadata provenance and material equivalence review.
-- Browser-based end-to-end visual QA for every condition.
-- Pilot study with representative users.
-- Backend, secure researcher accounts, database, or cloud deployment.
-- Formal ethics, consent, retention, and deletion documentation.
-- Statistical analysis plan and sample-size justification.
+- The participant form and Task 1 match the supplied workbook options and selection limits.
+- Task 2 ranking, progressive disclosure, five helpfulness trials, timers, and interaction logs are implemented.
+- All 12 Task 3 pairings are implemented with side-by-side phone views and randomized order.
+- Task 4 interview and Xiaoyuzhou task are placed at the end.
+- Analysis-ready answer CSV, event CSV, and JSON exports are implemented.
+- The broken Chinese text in the HTML shell has been corrected.
+- Sites hosting metadata, a D1 migration, Worker persistence endpoints, stable event IDs, and aggregate CSV exports are implemented.
+- The original participant flow and local per-participant exports remain available.
+- Automated client and Worker checks are available.
 
 ## Prioritized next steps
 
-1. **Finalize the five audio trials.** Select licensed segments, define start/end points, normalize loudness, and populate `study-materials.js`.
-2. **Decide the experimental comparison.** Confirm whether five different audio segments are acceptable or whether feature conditions require matched content/control variants.
-3. **Add objective outcomes if needed.** If the claim concerns improved understanding, add comprehension questions and accuracy scoring rather than relying only on perceived help.
-4. **Verify research materials.** Label every episode field as sourced, derived, or simulated and record a material version.
-5. **Approve condition order.** Replace deterministic shuffle with the intended Latin square or assignment plan if required.
-6. **Run a complete pilot.** Test all 12 structure conditions, the five timers, back/restart behavior, data export, phone legibility, and total study duration.
-7. **Refine the protocol.** Define eligibility, prior familiarity, exclusions, missing data, timeouts, moderator behavior, and interview coding.
-8. **Prepare formal data handling.** Add consent text, retention/deletion rules, recording policy, secure storage, and access roles.
-9. **Build the cloud data layer.** Use server-side sessions, authenticated researcher access, material/condition versioning, and protected exports.
-10. **Add automated checks.** Cover validation, condition completeness, timer behavior, state migration, and export schema.
-
-## Assumptions requiring confirmation
-
-- The new scheme fully replaces the prior retrieval experiment rather than becoming an additional branch.
-- The 13 information types should all appear in the direct ranking task.
-- A maximum of three revealed fields remains appropriate.
-- The Task 3 layout should remain a phone-ratio presentation.
-- A 1–7 rating scale is intended wherever the new outline says “1–7.”
-- Participants have Xiaoyuzhou installed or can access it during the moderated session.
-- Think-aloud observations will be captured by the moderator outside the website.
+1. Select, license, edit, and loudness-match the five formal audio segments.
+2. Verify every episode title, guest, play count, topic, and auxiliary field against an authoritative source.
+3. Decide whether feature order needs counterbalancing and whether a no-feature control is required.
+4. Pilot the complete flow with representative participants and check total duration.
+5. Inspect the two-phone comparison pages at the actual study display size.
+6. Test keyboard operation, screen-reader labels, back/restart behavior, completed exports, reload recovery, and interrupted-network recovery.
+7. Finalize participant eligibility, exclusion rules, sample size, missing-data handling, and analysis plan.
+8. Finalize consent, recording, retention, deletion, and interview-coding procedures.
+9. Set and securely retain the Sites `RESEARCHER_EXPORT_TOKEN`, then test authorization and aggregate exports on a private deployment candidate.
+10. Review the saved Sites version and database migration before explicitly approving any production deployment.
 
 ## Unresolved questions
 
-1. What are the exact five audio files and their legal/ethical use status?
-2. Are the five audio segments matched for difficulty and topic familiarity?
-3. Should each feature be compared with a no-feature control?
-4. Should audio and feature order be randomized or counterbalanced?
-5. Does “content understanding” in Task 3 need an objective retrieval question as well as a rating?
-6. Which episode metadata are authoritative, and which are demonstration values?
-7. What is the final participant population and target sample size?
-8. What is the planned quantitative and qualitative analysis?
-9. Will screen/audio recording occur, and how will it be stored and deleted?
-10. Should the obsolete Beneath the Conversation assets be retained in the Git repository?
+- Should the workbook’s duplicate `T1-03` be formally renumbered in the source file?
+- Should “其他” responses remain oral-only, or should a moderator have a separate coding form?
+- Are the five audio features tested on five different clips or matched variants of the same content?
+- Is perceived helpfulness sufficient, or is an objective comprehension measure required?
+- What randomization or counterbalancing plan will be used for formal analysis?
+- Which participant and episode metadata may be retained, and for how long?
+- Which researchers may receive the shared export token, and what is the rotation procedure?
+- Should the first production Site remain owner-only, use a named allowlist, or later become public for participant recruitment?
