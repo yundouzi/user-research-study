@@ -66,7 +66,7 @@ async function findParticipantSession(request, env) {
   if (!token) return null;
   const sessionHash = await sha256Hex(token);
   const session = await env.DB.prepare(`
-    SELECT session_hash, participant_id, layout_arm
+    SELECT session_hash, participant_id, layout_arm, content_arm
     FROM anonymous_sessions
     WHERE session_hash = ?
   `).bind(sessionHash).first();
@@ -87,13 +87,16 @@ async function createParticipantSession(request, env) {
 
   const participantId = textValue(payload.participantId, 48);
   const requestedArm = numberValue(payload.layoutArm);
+  const requestedContentArm = numberValue(payload.contentArm);
   const expectedArm = parseInt(token.slice(0, 2), 16) % 2;
+  const expectedContentArm = parseInt(token.slice(2, 4), 16) % 2;
   if (!participantIdIsValid(participantId)) return json({ error: "invalid_participant_id" }, 400);
   if (![0, 1].includes(requestedArm) || requestedArm !== expectedArm) return json({ error: "invalid_layout_arm" }, 400);
+  if (![0, 1].includes(requestedContentArm) || requestedContentArm !== expectedContentArm) return json({ error: "invalid_content_arm" }, 400);
 
   const sessionHash = await sha256Hex(token);
   const existing = await env.DB.prepare(`
-    SELECT session_hash, participant_id, layout_arm
+    SELECT session_hash, participant_id, layout_arm, content_arm
     FROM anonymous_sessions
     WHERE session_hash = ?
   `).bind(sessionHash).first();
@@ -102,23 +105,23 @@ async function createParticipantSession(request, env) {
     await env.DB.prepare("UPDATE anonymous_sessions SET last_seen_at = ? WHERE session_hash = ?")
       .bind(new Date().toISOString(), sessionHash).run();
     const participant = await env.DB.prepare("SELECT revision FROM participants WHERE participant_id = ?").bind(participantId).first();
-    return json({ ok: true, participantId, layoutArm: existing.layout_arm, revision: participant?.revision || 0 });
+    return json({ ok: true, participantId, layoutArm: existing.layout_arm, contentArm: existing.content_arm, revision: participant?.revision || 0 });
   }
 
   const now = new Date().toISOString();
   try {
     await env.DB.prepare(`
-      INSERT INTO anonymous_sessions (session_hash, participant_id, layout_arm, created_at, last_seen_at)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind(sessionHash, participantId, expectedArm, now, now).run();
-    return json({ ok: true, participantId, layoutArm: expectedArm, revision: 0 }, 201);
+      INSERT INTO anonymous_sessions (session_hash, participant_id, layout_arm, content_arm, created_at, last_seen_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(sessionHash, participantId, expectedArm, expectedContentArm, now, now).run();
+    return json({ ok: true, participantId, layoutArm: expectedArm, contentArm: expectedContentArm, revision: 0 }, 201);
   } catch (error) {
     const collision = await env.DB.prepare(`
-      SELECT session_hash, participant_id, layout_arm FROM anonymous_sessions
+      SELECT session_hash, participant_id, layout_arm, content_arm FROM anonymous_sessions
       WHERE session_hash = ? OR participant_id = ?
     `).bind(sessionHash, participantId).first();
     if (collision?.session_hash === sessionHash && collision.participant_id === participantId) {
-      return json({ ok: true, participantId, layoutArm: collision.layout_arm, revision: 0 });
+      return json({ ok: true, participantId, layoutArm: collision.layout_arm, contentArm: collision.content_arm, revision: 0 });
     }
     console.error("anonymous_session_create_failed", error);
     return json({ error: "participant_id_collision" }, 409);
@@ -353,11 +356,83 @@ async function exportTask3(env) {
   return csv(rows);
 }
 
+async function task2DRows(env) {
+  const result = await env.DB.prepare(`
+    SELECT participant_id, study_version, question_id, measure, response, duration_ms, metadata
+    FROM answers
+    WHERE stage = 'Task 2-D'
+    ORDER BY participant_id, question_id, measure
+  `).all();
+  const grouped = new Map();
+  for (const item of result.results || []) {
+    const key = `${item.participant_id}\u0000${item.question_id}`;
+    const row = grouped.get(key) || {
+      participant_id: item.participant_id, study_version: item.study_version, trial_id: item.question_id,
+      q1_answer: "", q1_correct: "", q2_answer: "", q2_correct: "", q3_ease_rating: "", metadata: {}
+    };
+    if (Object.hasOwn(row, item.measure)) row[item.measure] = item.response;
+    row.metadata = { ...row.metadata, ...metadataObject(item.metadata) };
+    grouped.set(key, row);
+  }
+  return [...grouped.values()];
+}
+
+async function exportTask2DRaw(env) {
+  const records = await task2DRows(env);
+  const header = [
+    "participant_id", "study_version", "trial_id", "experiment_arm", "feature_type", "feature_enabled", "feature_opened",
+    "feature_material_ready", "audio_start_time", "q1_answer", "q1_correct", "q2_answer", "q2_correct", "q3_ease_rating",
+    "q1_duration_ms", "q2_duration_ms", "trial_total_duration_ms", "playback_count", "playback_seek_events", "feature_usage_events"
+  ];
+  return csv([header, ...records.map(row => {
+    const meta = row.metadata;
+    return [row.participant_id, row.study_version, row.trial_id, meta.experimentArm, meta.featureType, meta.featureEnabled, meta.featureOpened,
+      meta.featureMaterialReady, meta.audioStartTime, row.q1_answer, row.q1_correct, row.q2_answer, row.q2_correct, row.q3_ease_rating,
+      meta.q1DurationMs, meta.q2DurationMs, meta.trialTotalDurationMs, meta.playbackCount,
+      JSON.stringify(meta.playbackSeekEvents || []), JSON.stringify(meta.featureUsageEvents || [])];
+  })]);
+}
+
+function booleanNumber(value) {
+  return String(value).toLowerCase() === "true" || value === 1 ? 1 : 0;
+}
+
+function average(values) {
+  const numbers = values.map(Number).filter(Number.isFinite);
+  return numbers.length ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length : "";
+}
+
+async function exportTask2DSummary(env) {
+  const records = await task2DRows(env);
+  const groups = new Map();
+  for (const row of records) {
+    const enabled = booleanNumber(row.metadata.featureEnabled);
+    const key = `${row.trial_id}\u0000${enabled}`;
+    const group = groups.get(key) || { trial_id: row.trial_id, feature_type: row.metadata.featureType, feature_enabled: enabled, rows: [] };
+    group.rows.push(row);
+    groups.set(key, group);
+  }
+  const header = ["trial_id", "feature_type", "feature_enabled", "participant_count", "q1_accuracy", "q2_accuracy", "average_q1_duration_ms", "average_q2_duration_ms", "average_trial_total_duration_ms", "average_ease_rating", "feature_open_rate"];
+  const rows = [...groups.values()].sort((a, b) => `${a.trial_id}${a.feature_enabled}`.localeCompare(`${b.trial_id}${b.feature_enabled}`)).map(group => {
+    const values = group.rows;
+    return [group.trial_id, group.feature_type, group.feature_enabled, values.length,
+      average(values.map(item => booleanNumber(item.q1_correct))), average(values.map(item => booleanNumber(item.q2_correct))),
+      average(values.map(item => item.metadata.q1DurationMs)), average(values.map(item => item.metadata.q2DurationMs)),
+      average(values.map(item => item.metadata.trialTotalDurationMs)), average(values.map(item => item.q3_ease_rating)),
+      group.feature_enabled ? average(values.map(item => booleanNumber(item.metadata.featureOpened))) : ""];
+  });
+  return csv([header, ...rows]);
+}
+
 async function handleResearchExport(request, env, kind) {
   if (!researcherAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
   if (!env.DB) return json({ error: "database_not_configured" }, 503);
   try {
-    const body = kind === "answers" ? await exportAnswers(env) : kind === "events" ? await exportEvents(env) : await exportTask3(env);
+    const body = kind === "answers" ? await exportAnswers(env)
+      : kind === "events" ? await exportEvents(env)
+      : kind === "task2d-raw" ? await exportTask2DRaw(env)
+      : kind === "task2d-summary" ? await exportTask2DSummary(env)
+      : await exportTask3(env);
     return new Response(`\ufeff${body}`, {
       headers: {
         "content-type": "text/csv; charset=utf-8",
@@ -392,6 +467,8 @@ export default {
     }
     if (request.method === "GET" && url.pathname === "/api/research/answers.csv") return handleResearchExport(request, env, "answers");
     if (request.method === "GET" && url.pathname === "/api/research/events.csv") return handleResearchExport(request, env, "events");
+    if (request.method === "GET" && url.pathname === "/api/research/task2d-raw.csv") return handleResearchExport(request, env, "task2d-raw");
+    if (request.method === "GET" && url.pathname === "/api/research/task2d-summary.csv") return handleResearchExport(request, env, "task2d-summary");
     if (request.method === "GET" && url.pathname === "/api/research/task3.csv") return handleResearchExport(request, env, "task3");
     if (url.pathname.startsWith("/api/")) return json({ error: "not_found" }, 404);
     return serveStatic(request, env);

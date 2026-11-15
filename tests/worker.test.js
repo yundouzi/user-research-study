@@ -29,6 +29,7 @@ function mockDatabase() {
   const sessions = new Map();
   const participants = new Map();
   const task3Answers = [];
+  const task2dAnswers = [];
 
   function statement(sql) {
     return {
@@ -50,14 +51,15 @@ function mockDatabase() {
       },
       async all() {
         if (this.sql.includes("WHERE stage = 'Task 3'")) return { results: task3Answers };
+        if (this.sql.includes("WHERE stage = 'Task 2-D'")) return { results: task2dAnswers };
         return { results: [] };
       },
       async run() {
         const normalized = this.sql.replace(/\s+/g, " ");
         if (normalized.includes("INSERT INTO anonymous_sessions")) {
-          const [session_hash, participant_id, layout_arm, created_at, last_seen_at] = this.values;
+          const [session_hash, participant_id, layout_arm, content_arm, created_at, last_seen_at] = this.values;
           if (sessions.has(session_hash) || [...sessions.values()].some(item => item.participant_id === participant_id)) throw new Error("unique");
-          sessions.set(session_hash, { session_hash, participant_id, layout_arm, created_at, last_seen_at });
+          sessions.set(session_hash, { session_hash, participant_id, layout_arm, content_arm, created_at, last_seen_at });
         }
         return { success: true };
       }
@@ -69,6 +71,7 @@ function mockDatabase() {
     sessions,
     participants,
     task3Answers,
+    task2dAnswers,
     prepare(sql) {
       const prepared = statement(sql);
       calls.push(prepared);
@@ -122,8 +125,9 @@ function participantRequest(url, token, body) {
   const participantId = "P-20261113-0123456789ABCDEF01234567";
   const session = await worker.fetch(participantRequest("https://example.test/api/study/session", token, {
     participantId,
-    studyVersion: 7,
-    layoutArm: 0
+    studyVersion: 8,
+    layoutArm: 0,
+    contentArm: 1
   }), env);
   assert.equal(session.status, 201, "A cryptographic anonymous session should be created before data writes");
   assert.equal((await session.json()).layoutArm, 0);
@@ -132,7 +136,7 @@ function participantRequest(url, token, body) {
     requestId: "0123456789abcdef0123456789abcdef",
     baseRevision: 0,
     participantId,
-    studyVersion: 7,
+    studyVersion: 8,
     currentStep: "needs",
     createdAt: new Date().toISOString(),
     completedAt: null,
@@ -171,8 +175,8 @@ function participantRequest(url, token, body) {
     sideSwapped: true, layoutArm: 1
   });
   DB.task3Answers.push(
-    { participant_id: participantId, study_version: 7, question_id: "T3-01", measure: "visual_comfort_choice", response: "A", duration_ms: 1400, metadata },
-    { participant_id: participantId, study_version: 7, question_id: "T3-01", measure: "understanding_choice", response: "B", duration_ms: 1400, metadata }
+    { participant_id: participantId, study_version: 8, question_id: "T3-01", measure: "visual_comfort_choice", response: "A", duration_ms: 1400, metadata },
+    { participant_id: participantId, study_version: 8, question_id: "T3-01", measure: "understanding_choice", response: "B", duration_ms: 1400, metadata }
   );
   const task3Export = await worker.fetch(new Request("https://example.test/api/research/task3.csv", {
     headers: { authorization: "Bearer test-token" }
@@ -184,6 +188,22 @@ function participantRequest(url, token, body) {
   assert.match(task3Csv, /display_a_type/);
   assert.match(task3Csv, /"network"/);
 
+  const task2dMetadata = JSON.stringify({ experimentArm:"A", featureType:"transcript", featureEnabled:true, featureOpened:true, featureMaterialReady:true, audioStartTime:"2026-01-01T00:00:00.000Z", q1DurationMs:500, q2DurationMs:700, trialTotalDurationMs:90000, playbackCount:2, playbackSeekEvents:[], featureUsageEvents:[{action:"open"}] });
+  DB.task2dAnswers.push(
+    { participant_id:participantId, study_version:8, question_id:"T2-D02", measure:"q1_answer", response:"A", duration_ms:500, metadata:task2dMetadata },
+    { participant_id:participantId, study_version:8, question_id:"T2-D02", measure:"q1_correct", response:"true", duration_ms:500, metadata:task2dMetadata },
+    { participant_id:participantId, study_version:8, question_id:"T2-D02", measure:"q2_answer", response:"A", duration_ms:700, metadata:task2dMetadata },
+    { participant_id:participantId, study_version:8, question_id:"T2-D02", measure:"q2_correct", response:"true", duration_ms:700, metadata:task2dMetadata },
+    { participant_id:participantId, study_version:8, question_id:"T2-D02", measure:"q3_ease_rating", response:"6", duration_ms:90000, metadata:task2dMetadata }
+  );
+  for (const kind of ["task2d-raw", "task2d-summary"]) {
+    const response = await worker.fetch(new Request(`https://example.test/api/research/${kind}.csv`, { headers:{ authorization:"Bearer test-token" } }), env);
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    assert.match(body, /T2-D02/);
+    assert.match(body, /transcript/);
+  }
+
   const asset = await worker.fetch(new Request("https://example.test/index.html"), env);
   assert.equal(asset.status, 200);
   assert.equal(await asset.text(), "site");
@@ -191,9 +211,11 @@ function participantRequest(url, token, body) {
 
   const migration1 = fs.readFileSync(path.resolve(__dirname, "..", "migrations", "0001_research_data.sql"), "utf8");
   const migration2 = fs.readFileSync(path.resolve(__dirname, "..", "migrations", "0002_anonymous_sessions_and_revisions.sql"), "utf8");
+  const migration3 = fs.readFileSync(path.resolve(__dirname, "..", "migrations", "0003_task2d_arm.sql"), "utf8");
   for (const table of ["participants", "answers", "events"]) assert.match(migration1, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}`));
   assert.match(migration2, /CREATE TABLE IF NOT EXISTS anonymous_sessions/);
   assert.match(migration2, /revision INTEGER NOT NULL DEFAULT 0/);
+  assert.match(migration3, /content_arm INTEGER NOT NULL/);
 
   console.log("Worker checks passed: anonymous authorization, idempotent retry, stale-write rejection, explicit Task 3 export, static fallback, and migrations.");
 })().catch(error => {

@@ -1,9 +1,9 @@
 "use strict";
 
-const STORAGE_KEY = "yzhStudyV7State";
-const SESSION_STORAGE_KEY = "yzhStudyV7AnonymousSession";
-const SYNC_QUEUE_KEY = "yzhStudyV7PendingSync";
-const STUDY_VERSION = 7;
+const STORAGE_KEY = "yzhStudyV8State";
+const SESSION_STORAGE_KEY = "yzhStudyV8AnonymousSession";
+const SYNC_QUEUE_KEY = "yzhStudyV8PendingSync";
+const STUDY_VERSION = 8;
 const SYNC_ENDPOINT = "/api/study/sync";
 const SESSION_ENDPOINT = "/api/study/session";
 
@@ -349,51 +349,54 @@ const STRUCTURE_EPISODES = [
 
 const CONTENT_TRIALS = [
   {
-    feature: "转写文本",
-    prompt: "阅读与音频同步的文字内容，判断它对理解速度和理解深度的帮助。",
+    id: "T2-D01", featureType: "topic_keyword_timeline", feature: "主题关键词时间轴", startSec: 626, endSec: 685,
+    prompt: "请完整收听音频，然后回答三道题。",
+    q1: { text: "鸟鸟小时候独自在家时，为什么需要寻找备用钥匙？", options: [["A","父母把厕所门锁上，避免她接近厨房"],["B","她想打开父母的卧室"],["C","她把家门钥匙弄丢了"],["D","她想去楼下买雪糕"]], correct: "A" },
+    q2: { text: "这段经历的叙述顺序是什么？", options: [["A","独自在家的风险—厕所被锁—找到备用钥匙—偷吃雪糕忘关冰箱"],["B","偷吃雪糕—父母回家—找到钥匙—厕所被锁"],["C","父母回家—厕所被锁—独自在家—买雪糕"],["D","找到钥匙—去学校—独自在家—父母回家"]], correct: "A" },
     content: () => `
-      <div class="transcript-line"><time>00:18</time><span><b>鲁豫：</b>你是什么时候意识到，职业并不一定是一条直线的？</span></div>
-      <div class="transcript-line"><time>00:27</time><span><b>嘉宾：</b>是在第一次主动离开稳定岗位之后。结果并不确定，但我开始知道自己在寻找什么。</span></div>
-      <div class="transcript-line"><time>00:44</time><span><b>鲁豫：</b>所以真正困难的不是离开，而是在没有答案时继续判断。</span></div>`
+      <div class="topic-timeline"><div class="topic-segment" style="flex:21;background:#667f99">独自在家的风险<br>00:00–00:21</div><div class="topic-segment" style="flex:18;background:#d99056">寻找备用钥匙<br>00:21–00:39</div><div class="topic-segment" style="flex:20;background:#825d82">偷吃雪糕与冰箱<br>00:39–00:59</div></div>`
   },
   {
-    feature: "内容主题划分（时间轴）",
-    prompt: "借助主题时间轴快速了解片段的内容结构。",
+    id: "T2-D02", featureType: "transcript", feature: "转写文本", startSec: 1445, endSec: 1503,
+    prompt: "请完整收听音频，然后回答三道题。",
+    q1: { text: "鸟鸟为什么说自己在大学里感到不快乐和孤独？", options: [["A","她关心文学和社会议题，但身边同学很少与她交流这些内容"],["B","她不喜欢学校所在的城市"],["C","她没有参加任何社团"],["D","她觉得课程太简单"]], correct: "A" },
+    q2: { text: "鸟鸟提到，部分理工科学生相信什么？", options: [["A","学好数理化，走遍天下都不怕"],["B","读万卷书不如行万里路"],["C","兴趣是最好的老师"],["D","实践比理论更重要"]], correct: "A" },
     content: () => `
-      <div class="topic-timeline">
-        <div class="topic-segment" style="flex:1;background:#667f99">职业起点<br>00:00</div>
-        <div class="topic-segment" style="flex:1.25;background:#d99056">关键选择<br>00:42</div>
-        <div class="topic-segment" style="flex:.9;background:#825d82">低谷经验<br>01:37</div>
-        <div class="topic-segment" style="flex:1.1;background:#2f706c">重新定义<br>02:18</div>
-      </div>
-      <p class="helper">颜色代表主题类别，宽度代表该主题在片段中所占时长。</p>`
+      <div class="transcript-line"><time>00:00</time><span><b>鸟鸟：</b>我在大学里边非常不快乐……从初中开始看《读者》《格言》，高中看文学杂志，大学开始看时事类的杂志。</span></div>
+      <div class="transcript-line"><time>00:17</time><span><b>鸟鸟：</b>我跟同学都没有办法交流这些东西，因为他们都不关心，我就觉得很孤独。</span></div>
+      <div class="transcript-line"><time>00:31</time><span><b>鸟鸟：</b>有一些理工科学生会觉得“学好数理化，走遍天下都不怕”，也不太反思这些东西。</span></div>
+      <div class="transcript-line"><time>00:49</time><span><b>鸟鸟：</b>但我很关心别人是怎么活着的，还有哪些问题没有解决。</span></div>`
   },
   {
-    feature: "时间戳评论",
-    prompt: "查看听众针对具体音频位置留下的评论。",
+    id: "T2-D03", featureType: "timestamp_comment", feature: "时间戳评论", startSec: 3790, endSec: 3860, materialReady: false,
+    prompt: "请完整收听音频，然后回答三道题。",
+    q1: { text: "为什么前辈女性脱口秀演员对鸟鸟很重要？", options: [["A","她们在舞台上的掌控力让鸟鸟能够想象自己也可以做到"],["B","她们替鸟鸟修改了全部段子"],["C","她们邀请鸟鸟加入相声社团"],["D","她们帮助鸟鸟找到电视台工作"]], correct: "A" },
+    q2: { text: "鸟鸟说自己在开始练习一件事之前，通常需要什么？", options: [["A","先看到别人成功完成过这件事"],["B","先获得正式证书"],["C","先得到家人的许可"],["D","先准备完整商业计划"]], correct: "A" },
     content: () => `
-      <div class="comment-pin"><time>00:36</time><br>“这里说的‘没有答案时继续判断’很像我换工作时的状态。”</div>
-      <div class="comment-pin"><time>01:52</time><br>“希望能多聊一点职业低谷之后怎样恢复信心。”</div>
-      <div class="comment-pin"><time>02:24</time><br>“重新定义成功的这一段很有帮助。”</div>`
+      <div class="material-warning"><b>研究材料待补充</b><p>现有已核实评论中没有与 63:10–64:20 对应的时间戳评论。为避免编造正式材料，此处暂不展示评论；请在正式测试前导入经核实的评论。</p></div>`
   },
   {
-    feature: "情感分析",
-    prompt: "观察片段中情绪方向与强度的变化。",
+    id: "T2-D04", featureType: "sentiment_analysis", feature: "情感分析", startSec: 4514, endSec: 4572,
+    prompt: "请完整收听音频，然后回答三道题。",
+    q1: { text: "鸟鸟在这段中如何看待“魅力”？", options: [["A","没有魅力的人也值得拥有好的生活体验"],["B","只有有魅力的人才值得被喜欢"],["C","魅力完全由外貌决定"],["D","魅力只能通过表演训练获得"]], correct: "A" },
+    q2: { text: "这段对话的情感走向更接近哪一种？", options: [["A","从中性提问转向积极肯定，最后回到反思"],["B","从愤怒持续转向更强烈的愤怒"],["C","始终是悲伤和否定"],["D","完全没有情绪变化"]], correct: "A" },
     content: () => `
       <div class="sentiment-chart" aria-label="情感强度随时间变化">
-        ${[42,58,76,49,34,62,88,73].map((height,index) => `<div class="sentiment-bar" style="height:${height}%"><span>${index * 24}s</span></div>`).join("")}
+        ${[18,32,57,50,68,38].map((height,index) => `<div class="sentiment-bar" style="height:${height}%"><span>${[0,9,25,40,49,54][index]}s</span></div>`).join("")}
       </div>
-      <p class="helper" style="margin-top:38px">柱形越高表示积极情绪强度越高；低谷段落集中在片段中部。</p>`
+      <p class="helper" style="margin-top:38px">柱形越高表示积极情绪越明显。该结果来自逐句情感分析，用于观察方向变化，不代表对说话者心理状态的诊断。</p>`
   },
   {
-    feature: "音频分析特征",
-    prompt: "查看语速、停顿、说话人占比等音频特征。",
+    id: "T2-D05", featureType: "audio_features", feature: "音频分析特征", startSec: 2304, endSec: 2366,
+    prompt: "请完整收听音频，然后回答三道题。",
+    q1: { text: "鸟鸟对创作的看法发生了什么变化？", options: [["A","她开始认为青涩作品和不完整片段也可能有价值"],["B","她认为只有成熟作家才应发表作品"],["C","她不再阅读卡夫卡"],["D","她认为创作必须带来痛苦"]], correct: "A" },
+    q2: { text: "在这段音频中，谁的发言时长占比更高？", options: [["A","鸟鸟，约占四分之三"],["B","鲁豫，约占四分之三"],["C","两人完全相同"],["D","无法听出任何说话人切换"]], correct: "A" },
     content: () => `
       <div class="feature-metrics">
-        <div class="metric"><span>平均语速</span><b>238</b><small>字／分钟</small></div>
-        <div class="metric"><span>平均停顿</span><b>0.9</b><small>秒</small></div>
-        <div class="metric"><span>主持人占比</span><b>36%</b><small>发言时长</small></div>
-        <div class="metric"><span>说话人切换</span><b>14</b><small>次／3分钟</small></div>
+        <div class="metric"><span>平均语速</span><b>291</b><small>字／分钟</small></div>
+        <div class="metric"><span>平均停顿</span><b>0.21</b><small>秒</small></div>
+        <div class="metric"><span>鸟鸟占比</span><b>75%</b><small>发言时长</small></div>
+        <div class="metric"><span>说话人切换</span><b>3</b><small>次／片段</small></div>
       </div>`
   }
 ];
@@ -462,14 +465,19 @@ function createSessionCredential() {
   return {
     participantId: participantId(),
     token,
-    layoutArm: parseInt(token.slice(0, 2), 16) % 2
+    layoutArm: parseInt(token.slice(0, 2), 16) % 2,
+    contentArm: parseInt(token.slice(2, 4), 16) % 2
   };
 }
 
 function loadSessionCredential() {
   try {
     const saved = JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || "null");
-    if (participantIdIsValid(saved?.participantId) && /^[a-f0-9]{64}$/.test(saved?.token) && [0, 1].includes(saved?.layoutArm)) return saved;
+    if (participantIdIsValid(saved?.participantId) && /^[a-f0-9]{64}$/.test(saved?.token) && [0, 1].includes(saved?.layoutArm)) {
+      if (![0, 1].includes(saved.contentArm)) saved.contentArm = parseInt(saved.token.slice(2, 4), 16) % 2;
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(saved));
+      return saved;
+    }
   } catch {}
   const credential = createSessionCredential();
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(credential));
@@ -555,6 +563,11 @@ function newState() {
     contentIndex: 0,
     contentStarts: {},
     featureOpen: {},
+    contentArm: sessionCredential.contentArm,
+    contentAudioCompleted: {},
+    contentPlayback: {},
+    contentQuestionTimes: {},
+    featureUsageEvents: {},
     structureIndex: 0,
     layoutArm: sessionCredential.layoutArm,
     structureComparisons: balancedComparisons(id, sessionCredential.layoutArm),
@@ -592,6 +605,11 @@ state.selectedFields = [...new Set((Array.isArray(state.selectedFields) ? state.
 state.needsIndex = Number.isInteger(state.needsIndex) ? Math.min(Math.max(state.needsIndex, 0), TASK_ONE_QUESTIONS.length - 1) : 0;
 state.needsResponses ||= state.answers.needs ? { ...state.answers.needs } : {};
 state.needsQuestionDurations ||= {};
+state.contentArm = [0, 1].includes(state.contentArm) ? state.contentArm : sessionCredential.contentArm;
+state.contentAudioCompleted ||= {};
+state.contentPlayback ||= {};
+state.contentQuestionTimes ||= {};
+state.featureUsageEvents ||= {};
 let pendingSync = (() => {
   try {
     const saved = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "null");
@@ -685,13 +703,14 @@ async function ensureParticipantSession() {
         body: JSON.stringify({
           participantId: state.participantId,
           studyVersion: STUDY_VERSION,
-          layoutArm: state.layoutArm
+          layoutArm: state.layoutArm,
+          contentArm: state.contentArm
         })
       });
       if (response.status === 404 || response.status === 405) serverSyncUnavailable = true;
       if (!response.ok) return false;
       const result = await response.json();
-      sessionRegistered = result.participantId === state.participantId && result.layoutArm === state.layoutArm;
+      sessionRegistered = result.participantId === state.participantId && result.layoutArm === state.layoutArm && result.contentArm === state.contentArm;
       return sessionRegistered;
     } catch {
       return false;
@@ -1049,6 +1068,9 @@ function revealedFieldHTML(episode, fieldId) {
   if (fieldId === "comments") {
     return `<span class="revealed-field revealed-comments"><b>${label}</b><span class="comment-list">${episode.commentOverview.map(comment => `<span class="comment-item"><span class="comment-username">${escapeHTML(comment.username)}</span><span class="comment-text">${escapeHTML(comment.text)}</span></span>`).join("")}</span></span>`;
   }
+  if (fieldId === "similar_recommendations") {
+    return `<span class="revealed-field"><b>${label}</b><span class="similar-list">${episode.similar.map(item => `<span>${escapeHTML(item)}</span>`).join("")}</span></span>`;
+  }
   const value = fieldValue(episode, fieldId);
   return `<span class="revealed-field ${value ? "" : "empty"}"><b>${label}</b><span class="revealed-value">${value ? escapeHTML(value) : "暂未提供"}</span></span>`;
 }
@@ -1073,8 +1095,9 @@ function renderInfoReveal() {
     </section>
     <section class="card">
       <h3>第二步：选择一集你最想听的节目</h3>
-      <p class="muted">点击节目即完成本题并进入下一阶段。</p>
+      <p class="muted">点击节目进行选择，确认后点击提交进入下一题。</p>
       <div class="episode-grid">${TASK2B_EPISODES.map(episodeChoiceHTML).join("")}</div>
+      <div class="form-actions"><button class="button" id="infoRevealSubmit" type="button" ${state.selectedEpisode ? "" : "disabled"}>提交并继续</button></div>
     </section>`);
 }
 
@@ -1102,13 +1125,13 @@ function renderContentIntro() {
   return wrap(`<div class="hero">
     <section class="hero-panel">
       <div class="eyebrow">Level 2 · Task 2-D</div>
-      <h1>单集内的信息能带来什么帮助？</h1>
-      <p class="lede">接下来有 5 个 3 分钟片段。每个片段对应一种辅助信息，请评价它对内容理解的帮助。</p>
-      <ul class="instruction-list"><li>每题点击“开始 3 分钟试听”后开始计时。</li><li>需要时打开右侧辅助信息。</li><li>试听结束或认为已经足够判断时，可以提交评价。</li></ul>
-      <div class="notice">当前为流程演示版。如果研究者尚未接入正式音频，页面会显示演示波形，但所有计时、辅助信息和评价仍可测试。</div>
+      <h1>单集内辅助信息测试</h1>
+      <p class="lede">接下来你将收听 5 段约 1 分钟的真实播客音频，并完成内容理解题与主观评价。整体目标用时约 10 分钟，不设强制倒计时。</p>
+      <ul class="instruction-list"><li>请先完整播放当前片段，播放结束后会显示答题区。</li><li>部分片段会提供一种辅助信息，部分片段仅显示音频。</li><li>答题时仍可重复播放或拖动进度；提交后进入下一段。</li></ul>
+      <div class="notice">页面不会显示正确答案或即时得分。请按照自己的理解作答。</div>
       <div class="form-actions"><button class="button" id="contentBegin" type="button">开始第 1 个片段</button></div>
     </section>
-    <aside class="hero-art"><div class="hero-art-copy"><span>5 种信息</span><strong>理解帮助</strong></div></aside>
+    <aside class="hero-art"><div class="hero-art-copy"><span>5 段音频</span><strong>A / B 对照</strong></div></aside>
   </div>`);
 }
 
@@ -1121,28 +1144,37 @@ function audioSource(index) {
   return window.YZH_STUDY_MATERIALS?.audioSources?.[index] || "";
 }
 
+function featureEnabledFor(index) {
+  return state.contentArm === 0 ? index % 2 === 0 : index % 2 === 1;
+}
+
+function optionHTML(name, question) {
+  return question.options.map(([value, label]) => `<label class="option"><input type="radio" name="${name}" value="${value}" required><span>${value}. ${escapeHTML(label)}</span></label>`).join("");
+}
+
 function renderContentTrial() {
   const trial = CONTENT_TRIALS[state.contentIndex];
-  const startedAt = state.contentStarts[state.contentIndex];
+  const completed = Boolean(state.contentAudioCompleted[state.contentIndex]);
+  const enabled = featureEnabledFor(state.contentIndex);
   const isOpen = Boolean(state.featureOpen[state.contentIndex]);
   const source = audioSource(state.contentIndex);
-  return wrap(`${sectionHeader(`Task 2-D · ${state.contentIndex + 1}/5`, trial.feature, trial.prompt, `<span class="badge warm">单段最多 03:00</span>`)}
-    <div class="trial-layout">
+  return wrap(`${sectionHeader(`Task 2-D · ${state.contentIndex + 1}/5`, `片段 ${state.contentIndex + 1}`, trial.prompt, `<span class="badge ${enabled ? "warm" : "dark"}">${enabled ? "有辅助信息" : "仅音频"}</span>`)}
+    <div class="trial-layout ${enabled ? "" : "audio-only"}">
       <section class="card audio-panel">
-        <div class="eyebrow">Audio segment ${state.contentIndex + 1}</div>
-        <div class="timer-display" id="clipTimer">03:00</div>
-        ${source ? `<audio class="audio-control" controls preload="metadata" src="${escapeHTML(source)}"></audio>` : `<div class="audio-placeholder"><div>${waveformHTML()}<b>演示音频片段 ${state.contentIndex + 1}</b><p class="helper">正式实验前请在 study-materials.js 中接入音频。</p></div></div>`}
-        <button class="button green" id="startClip" type="button" ${startedAt ? "disabled" : ""}>${startedAt ? "计时已开始" : "开始 3 分钟试听"}</button>
+        <div class="eyebrow">《岩中花述》S8E6 · ${String(Math.floor(trial.startSec / 60)).padStart(2,"0")}:${String(trial.startSec % 60).padStart(2,"0")}–${String(Math.floor(trial.endSec / 60)).padStart(2,"0")}:${String(trial.endSec % 60).padStart(2,"0")}</div>
+        ${source ? `<audio class="audio-control" controls preload="metadata" src="${escapeHTML(source)}" data-start="${trial.startSec}" data-end="${trial.endSec}"></audio>` : `<div class="audio-placeholder"><div>${waveformHTML()}<b>音频文件缺失</b><p class="helper">请研究者检查 study-materials.js。</p></div></div>`}
+        <p class="helper">请完整播放本段。片段结束后答题区会自动出现，之后仍可重复播放和拖动。</p>
       </section>
-      <section class="card feature-panel">
+      ${enabled ? `<section class="card feature-panel">
         <div class="feature-status"><div><div class="eyebrow">辅助信息</div><h2>${trial.feature}</h2></div><button class="feature-toggle" id="featureToggle" type="button">${isOpen ? "收起辅助信息" : `查看${trial.feature}`}</button></div>
         <div class="feature-content" id="featureContent">${isOpen ? trial.content() : `<div class="audio-placeholder"><p>点击右上角按钮查看辅助信息。</p></div>`}</div>
-      </section>
+      </section>` : ""}
     </div>
-    <form id="contentRatingForm" class="card" style="margin-top:20px">
-      <h2>本题评价</h2>
-      <div class="scale-block"><label>你认为${trial.feature}对内容理解的帮助是？</label>${scaleHTML("contentHelp", 7, "1 完全没有帮助", "7 非常有帮助")}</div>
-      <div class="interview-callout"><b>（访谈）</b>你是如何使用这项信息的？它在什么地方有帮助或造成干扰？</div>
+    <form id="contentRatingForm" class="card content-questions ${completed ? "" : "is-locked"}" style="margin-top:20px" data-question-number="片段 ${state.contentIndex + 1}">
+      ${completed ? `<h2>回答问题</h2>
+      <fieldset class="question-card"><legend><span class="question-number">Q1</span>${escapeHTML(trial.q1.text)}</legend><div class="options-grid single-column">${optionHTML("contentQ1", trial.q1)}</div></fieldset>
+      <fieldset class="question-card"><legend><span class="question-number">Q2</span>${escapeHTML(trial.q2.text)}</legend><div class="options-grid single-column">${optionHTML("contentQ2", trial.q2)}</div></fieldset>
+      <div class="scale-block"><label>Q3　在刚才的任务中，你觉得理解内容并找到问题答案有多容易？</label>${scaleHTML("contentEase", 7, "1 非常困难", "7 非常容易")}</div>` : `<div class="locked-message"><b>答题区尚未开启</b><p>完整播放当前片段后即可作答。</p></div>`}
       <div class="form-actions"><button class="button" type="submit">${state.contentIndex === CONTENT_TRIALS.length - 1 ? "完成并进入 Task 3" : "提交并进入下一题"}</button></div>
     </form>`);
 }
@@ -1304,7 +1336,6 @@ function render() {
   app.innerHTML = (RENDERERS[state.step] || renderIntro)();
   updateHeader();
   bindCurrentView();
-  if (state.step === "contentTrial" && state.contentStarts[state.contentIndex]) runCountdown();
   app.focus({ preventScroll: true });
 }
 
@@ -1409,44 +1440,69 @@ function bindRankingInteractions() {
   });
 }
 
-function startClip() {
-  if (!state.contentStarts[state.contentIndex]) {
-    state.contentStarts[state.contentIndex] = Date.now();
-    log("audio_trial_start", CONTENT_TRIALS[state.contentIndex].feature, { trial: state.contentIndex + 1, sourceConfigured: Boolean(audioSource(state.contentIndex)) });
-    save();
-  }
-  document.querySelector("#startClip")?.setAttribute("disabled", "");
-  runCountdown();
-}
-
-function runCountdown() {
-  stopCountdown();
-  const timerElement = document.querySelector("#clipTimer");
-  const startedAt = state.contentStarts[state.contentIndex];
-  if (!timerElement || !startedAt) return;
-  const update = () => {
-    const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
-    const remaining = Math.max(0, 180 - elapsedSeconds);
-    timerElement.textContent = `${String(Math.floor(remaining / 60)).padStart(2, "0")}:${String(remaining % 60).padStart(2, "0")}`;
-    if (remaining === 0) {
-      stopCountdown();
-      timerElement.textContent = "时间到";
-      log("audio_trial_timeout", CONTENT_TRIALS[state.contentIndex].feature, { trial: state.contentIndex + 1 });
+function bindContentAudio() {
+  const audio = document.querySelector(".audio-control");
+  if (!audio) return;
+  const index = state.contentIndex;
+  const trial = CONTENT_TRIALS[index];
+  const playback = state.contentPlayback[index] ||= { playbackCount: 0, seekEvents: [], lastTime: trial.startSec };
+  let internalSeek = false;
+  const clampToClip = () => {
+    if (!Number.isFinite(audio.duration)) return;
+    const target = Math.min(trial.endSec, Math.max(trial.startSec, audio.currentTime || trial.startSec));
+    if (Math.abs(target - audio.currentTime) > 0.05) {
+      internalSeek = true;
+      audio.currentTime = target;
+      window.setTimeout(() => { internalSeek = false; }, 0);
     }
   };
-  update();
-  countdownTimer = window.setInterval(update, 1000);
+  audio.addEventListener("loadedmetadata", () => {
+    internalSeek = true;
+    audio.currentTime = trial.startSec;
+    window.setTimeout(() => { internalSeek = false; }, 0);
+  });
+  audio.addEventListener("play", () => {
+    clampToClip();
+    if (!state.contentStarts[index]) {
+      state.contentStarts[index] = Date.now();
+      playback.audioStartTime = new Date().toISOString();
+      log("audio_trial_start", trial.id, { trial: index + 1, featureType: trial.featureType, featureEnabled: featureEnabledFor(index) });
+    }
+    playback.playbackCount += 1;
+    log("audio_play", trial.id, { playbackCount: playback.playbackCount, positionSec: audio.currentTime - trial.startSec });
+    save();
+  });
+  audio.addEventListener("seeking", () => {
+    if (internalSeek) return;
+    const from = playback.lastTime ?? trial.startSec;
+    clampToClip();
+    const event = { at: new Date().toISOString(), fromSec: Math.max(0, from - trial.startSec), toSec: Math.max(0, Math.min(trial.endSec, audio.currentTime) - trial.startSec) };
+    playback.seekEvents.push(event);
+    log("audio_seek", trial.id, event);
+    save();
+  });
+  audio.addEventListener("timeupdate", () => {
+    playback.lastTime = audio.currentTime;
+    if (audio.currentTime < trial.endSec - 0.12 || state.contentAudioCompleted[index]) return;
+    audio.pause();
+    state.contentAudioCompleted[index] = true;
+    state.contentQuestionTimes[index] = { shownAt: Date.now() };
+    log("audio_segment_complete", trial.id, { listenedDurationSec: trial.endSec - trial.startSec });
+    save();
+    render();
+  });
 }
 
 function bindCurrentView() {
   if (state.step === "infoRank") bindRankingInteractions();
+  if (state.step === "contentTrial") bindContentAudio();
 }
 
 function renderResearcher() {
   stopCountdown();
   const completedContent = Object.keys(state.answers.contentTrials || {}).length;
   const completedStructures = Object.keys(state.answers.structureTrials || {}).length;
-  const aggregateExports = canUseServerAPI() ? `<button class="button" id="researchExportAllAnswers" type="button">导出全部答案 CSV</button><button class="button secondary" id="researchExportTask3" type="button">导出 Task 3 对比 CSV</button><button class="button secondary" id="researchExportAllEvents" type="button">导出全部日志 CSV</button>` : "";
+  const aggregateExports = canUseServerAPI() ? `<button class="button" id="researchExportAllAnswers" type="button">导出全部答案 CSV</button><button class="button secondary" id="researchExportTask2DRaw" type="button">导出 Task 2-D 原始记录</button><button class="button secondary" id="researchExportTask2DSummary" type="button">导出 Task 2-D 汇总结果</button><button class="button secondary" id="researchExportTask3" type="button">导出 Task 3 对比 CSV</button><button class="button secondary" id="researchExportAllEvents" type="button">导出全部日志 CSV</button>` : "";
   app.innerHTML = wrap(`${sectionHeader("Researcher console", "研究执行台", `当前参与者：${state.participantId}`, `<span class="badge dark">${STEP_LABELS[state.step]}</span>`)}
     <div class="research-grid">
       <aside class="card research-nav"><button class="button secondary" id="returnParticipant" type="button">← 返回参与者视图</button><button class="button" id="researchExportCSV" type="button">导出本参与者答案 CSV</button><button class="button secondary" id="researchExportEventsCSV" type="button">导出本参与者日志 CSV</button><button class="button secondary" id="researchExportJSON" type="button">导出本参与者 JSON</button>${aggregateExports}<button class="button secondary" id="markInterrupted" type="button">标记异常中断</button></aside>
@@ -1532,11 +1588,23 @@ function answerRows() {
     selectedFields: reveal.fields || [],
     selectedFieldIds: reveal.fieldIds || (reveal.fields || []).map(label => INFORMATION_FIELD_IDS[label]).filter(Boolean)
   });
-  Object.entries(state.answers.contentTrials || {}).forEach(([index, trial]) => add(`T2-C0${Number(index) + 1}`, "Task 2", "helpfulness_1_to_7", trial.help, trial.elapsedMs, {
-    feature: trial.feature,
-    featureOpened: trial.featureOpened,
-    audioConfigured: trial.audioConfigured
-  }));
+  Object.entries(state.answers.contentTrials || {}).forEach(([index, trial]) => {
+    const metadata = {
+      taskId: trial.taskId || "T2-D", trialId: trial.trialId || `T2-D0${Number(index) + 1}`,
+      experimentArm: trial.experimentArm, featureType: trial.featureType, feature: trial.feature,
+      featureEnabled: trial.featureEnabled, featureOpened: trial.featureOpened, featureMaterialReady: trial.featureMaterialReady,
+      audioStartTime: trial.audioStartTime, q1DurationMs: trial.q1DurationMs, q2DurationMs: trial.q2DurationMs,
+      trialTotalDurationMs: trial.trialTotalDurationMs, playbackCount: trial.playbackCount,
+      playbackSeekEvents: trial.playbackSeekEvents || [], featureUsageEvents: trial.featureUsageEvents || [],
+      audioConfigured: trial.audioConfigured
+    };
+    const questionId = trial.trialId || `T2-D0${Number(index) + 1}`;
+    add(questionId, "Task 2-D", "q1_answer", trial.q1Answer, trial.q1DurationMs, metadata);
+    add(questionId, "Task 2-D", "q1_correct", trial.q1Correct, trial.q1DurationMs, metadata);
+    add(questionId, "Task 2-D", "q2_answer", trial.q2Answer, trial.q2DurationMs, metadata);
+    add(questionId, "Task 2-D", "q2_correct", trial.q2Correct, trial.q2DurationMs, metadata);
+    add(questionId, "Task 2-D", "q3_ease_rating", trial.q3EaseRating, trial.trialTotalDurationMs, metadata);
+  });
   Object.values(state.answers.structureTrials || {}).sort((a, b) => a.questionId.localeCompare(b.questionId)).forEach(trial => {
     const metadata = {
       displayAType: trial.aType,
@@ -1694,13 +1762,25 @@ document.addEventListener("click", event => {
       return showIncompleteQuestion("第一步", "请至少选择一类信息", document.querySelector(".field-picker"));
     }
     state.selectedEpisode = episodeButton.dataset.episodeChoice;
+    log("episode_select", state.selectedEpisode, { fieldIds: [...state.selectedFields] });
+    save();
+    render();
+    return;
+  }
+
+  if (event.target.id === "infoRevealSubmit") {
+    if (!state.selectedFields.length) {
+      return showIncompleteQuestion("第一步", "请至少选择一类信息", document.querySelector(".field-picker"));
+    }
+    if (!state.selectedEpisode) {
+      return showIncompleteQuestion("第二步", "请选择一集你最想听的节目", document.querySelector(".episode-grid"));
+    }
     state.answers.infoReveal = {
       fields: state.selectedFields.map(id => INFORMATION_LABELS[id]),
       fieldIds: [...state.selectedFields],
       episode: state.selectedEpisode,
       durationMs: pageDuration()
     };
-    log("episode_select", state.selectedEpisode, { fieldIds: [...state.selectedFields] });
     log("info_reveal_complete", state.selectedEpisode, state.answers.infoReveal);
     save();
     goTo("contentIntro");
@@ -1711,12 +1791,18 @@ document.addEventListener("click", event => {
     state.contentIndex = 0;
     goTo("contentTrial");
   }
-  if (event.target.id === "startClip") startClip();
   if (event.target.id === "featureToggle") {
+    if (!featureEnabledFor(state.contentIndex)) return;
     state.featureOpen[state.contentIndex] = !state.featureOpen[state.contentIndex];
-    log("feature_toggle", CONTENT_TRIALS[state.contentIndex].feature, { open: state.featureOpen[state.contentIndex] });
+    const usage = state.featureUsageEvents[state.contentIndex] ||= [];
+    const featureEvent = { action: state.featureOpen[state.contentIndex] ? "open" : "close", timestamp: new Date().toISOString(), elapsedMs: state.contentStarts[state.contentIndex] ? Date.now() - state.contentStarts[state.contentIndex] : null };
+    usage.push(featureEvent);
+    log("feature_toggle", CONTENT_TRIALS[state.contentIndex].featureType, featureEvent);
     save();
-    render();
+    const button = document.querySelector("#featureToggle");
+    const content = document.querySelector("#featureContent");
+    if (button) button.textContent = state.featureOpen[state.contentIndex] ? "收起辅助信息" : `查看${CONTENT_TRIALS[state.contentIndex].feature}`;
+    if (content) content.innerHTML = state.featureOpen[state.contentIndex] ? CONTENT_TRIALS[state.contentIndex].content() : `<div class="audio-placeholder"><p>点击右上角按钮查看辅助信息。</p></div>`;
   }
   if (event.target.id === "structureBegin") {
     state.structureIndex = 0;
@@ -1733,6 +1819,8 @@ document.addEventListener("click", event => {
   if (event.target.id === "exportEventsCSV" || event.target.id === "researchExportEventsCSV") exportEventsCSV();
   if (event.target.id === "exportJSON" || event.target.id === "researchExportJSON") exportJSON();
   if (event.target.id === "researchExportAllAnswers") exportAggregateCSV("answers");
+  if (event.target.id === "researchExportTask2DRaw") exportAggregateCSV("task2d-raw");
+  if (event.target.id === "researchExportTask2DSummary") exportAggregateCSV("task2d-summary");
   if (event.target.id === "researchExportTask3") exportAggregateCSV("task3");
   if (event.target.id === "researchExportAllEvents") exportAggregateCSV("events");
   if (event.target.id === "returnParticipant") render();
@@ -1779,6 +1867,13 @@ document.addEventListener("invalid", event => {
 
 document.addEventListener("change", event => {
   if (event.target.id === "consentCheck") document.querySelector("#introNext").disabled = !event.target.checked;
+  if (state.step === "contentTrial" && ["contentQ1", "contentQ2"].includes(event.target.name)) {
+    const times = state.contentQuestionTimes[state.contentIndex] ||= { shownAt: Date.now() };
+    const key = event.target.name === "contentQ1" ? "q1AnsweredAt" : "q2AnsweredAt";
+    if (!times[key]) times[key] = Date.now();
+    log("content_answer_change", `${CONTENT_TRIALS[state.contentIndex].id}-${event.target.name}`, { value: event.target.value });
+    save();
+  }
   if (event.target.matches("[data-choice-limit]")) {
     const limit = Number(event.target.dataset.choiceLimit);
     const group = event.target.dataset.choiceGroup;
@@ -1899,16 +1994,30 @@ document.addEventListener("submit", event => {
 
   if (event.target.id === "contentRatingForm") {
     event.preventDefault();
-    if (!state.contentStarts[state.contentIndex]) return showIncompleteQuestion(state.contentIndex + 1, "请先开始试听计时", document.querySelector(".audio-panel"));
-    if (!validateScale(["contentHelp"], state.contentIndex + 1)) return;
+    if (!state.contentAudioCompleted[state.contentIndex]) return showIncompleteQuestion(`片段 ${state.contentIndex + 1}`, "请先完整播放音频", document.querySelector(".audio-panel"));
     const data = collectForm(event.target);
+    if (!data.contentQ1) return showIncompleteQuestion("Q1", "请选择答案", event.target.querySelector("input[name='contentQ1']"));
+    if (!data.contentQ2) return showIncompleteQuestion("Q2", "请选择答案", event.target.querySelector("input[name='contentQ2']"));
+    if (!validateScale(["contentEase"], "Q3")) return;
     state.answers.contentTrials ||= {};
     const trial = CONTENT_TRIALS[state.contentIndex];
-    const elapsedMs = Math.min(Date.now() - state.contentStarts[state.contentIndex], 180000);
+    const times = state.contentQuestionTimes[state.contentIndex] || {};
+    const playback = state.contentPlayback[state.contentIndex] || { playbackCount: 0, seekEvents: [] };
+    const elapsedMs = Math.max(0, Date.now() - state.contentStarts[state.contentIndex]);
     state.answers.contentTrials[state.contentIndex] = {
-      feature: trial.feature,
-      help: Number(data.contentHelp),
-      featureOpened: Boolean(state.featureOpen[state.contentIndex]), elapsedMs,
+      taskId: "T2-D", trialId: trial.id, experimentArm: state.contentArm === 0 ? "A" : "B",
+      feature: trial.feature, featureType: trial.featureType, featureEnabled: featureEnabledFor(state.contentIndex),
+      featureOpened: (state.featureUsageEvents[state.contentIndex] || []).some(item => item.action === "open"), featureMaterialReady: trial.materialReady !== false,
+      audioStartTime: playback.audioStartTime || new Date(state.contentStarts[state.contentIndex]).toISOString(),
+      q1Answer: data.contentQ1, q1Correct: data.contentQ1 === trial.q1.correct,
+      q2Answer: data.contentQ2, q2Correct: data.contentQ2 === trial.q2.correct,
+      q3EaseRating: Number(data.contentEase),
+      q1DurationMs: times.q1AnsweredAt && times.shownAt ? times.q1AnsweredAt - times.shownAt : null,
+      q2DurationMs: times.q2AnsweredAt && times.shownAt ? times.q2AnsweredAt - times.shownAt : null,
+      trialTotalDurationMs: elapsedMs,
+      playbackCount: playback.playbackCount || 0,
+      playbackSeekEvents: playback.seekEvents || [],
+      featureUsageEvents: state.featureUsageEvents[state.contentIndex] || [],
       audioConfigured: Boolean(audioSource(state.contentIndex))
     };
     log("content_trial_complete", trial.feature, state.answers.contentTrials[state.contentIndex]);

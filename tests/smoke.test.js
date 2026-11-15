@@ -92,7 +92,13 @@ state.answers = {
     completedAt:"2026-01-01T00:00:00.000Z"
   },
   infoReveal: { fields:["主题标签"], fieldIds:["topic_tags"], episode:"S8E4", durationMs:1000 },
-  contentTrials: Object.fromEntries(CONTENT_TRIALS.map((trial,index) => [index,{ feature:trial.feature, help:5, featureOpened:true, elapsedMs:1000, audioConfigured:false }])),
+  contentTrials: Object.fromEntries(CONTENT_TRIALS.map((trial,index) => [index,{
+    taskId:"T2-D", trialId:trial.id, experimentArm:"A", feature:trial.feature, featureType:trial.featureType,
+    featureEnabled:index % 2 === 0, featureOpened:index % 2 === 0, featureMaterialReady:trial.materialReady !== false,
+    audioStartTime:"2026-01-01T00:00:00.000Z", q1Answer:"A", q1Correct:true, q2Answer:"A", q2Correct:true,
+    q3EaseRating:5, q1DurationMs:500, q2DurationMs:700, trialTotalDurationMs:1000, playbackCount:1,
+    playbackSeekEvents:[], featureUsageEvents:[], audioConfigured:true
+  }])),
   structureTrials: Object.fromEntries(state.structureComparisons.map((comparison,index) => [index,{
     questionId:comparison.id,
     aType:comparison.a.type,
@@ -127,6 +133,8 @@ globalThis.__qa = {
     return { deterministic: first.join(",") === repeat.join(","), participantVariation: first.join(",") !== second.join(",") };
   })(),
   contentTrialCount: CONTENT_TRIALS.length,
+  contentTrials: CONTENT_TRIALS.map((trial,index) => ({ id:trial.id, featureType:trial.featureType, q1:trial.q1, q2:trial.q2, materialReady:trial.materialReady !== false, arm0: index % 2 === 0, arm1: index % 2 === 1 })),
+  contentArm: state.contentArm,
   episodeCount: STRUCTURE_EPISODES.length,
   comparisons: [...state.structureComparisons],
   stepMarkup: STEPS.map(step => {
@@ -157,6 +165,7 @@ globalThis.__qa = {
   fieldValuesComplete: TASK2B_EPISODES.every(episode => INFORMATION_FIELDS
     .every(field => Boolean(fieldValue(episode, field.id)))),
   commentMarkup: TASK2B_EPISODES.map(episode => revealedFieldHTML(episode, "comments")),
+  similarMarkup: TASK2B_EPISODES.map(episode => revealedFieldHTML(episode, "similar_recommendations")),
   comparisonIds: STRUCTURE_COMPARISONS.map(item => item.id),
   answerHeader: answerRows()[0],
   sampleAnswerRows,
@@ -211,6 +220,8 @@ assert.equal(new Set(qa.rankingFieldIds).size, 9, "Task 2-A field IDs must be un
 assert.deepEqual(new Set(qa.rankingInitialOrder), new Set(qa.rankingFieldIds), "Initial ranking order must contain all nine stable field IDs exactly once");
 assert.ok(qa.rankingRandomizationCheck.deterministic && qa.rankingRandomizationCheck.participantVariation, "Initial order should be reproducible per participant and vary between participants");
 assert.equal(qa.contentTrialCount, 5, "Expected five within-episode trials");
+const audioPath = path.resolve(__dirname, "..", "assets", "audio", "s8e6.m4a");
+assert.ok(fs.existsSync(audioPath) && fs.statSync(audioPath).size > 20_000_000, "Task 2-D must include the real S8E6 audio asset");
 assert.ok(qa.episodeCount >= 15, "Expected at least 15 structure episodes");
 assert.equal(qa.comparisons.length, 12, "Expected twelve structure comparisons");
 assert.equal(new Set(qa.comparisons.map(item => item.id)).size, 12, "Structure comparison IDs must be unique");
@@ -241,19 +252,25 @@ assert.ok(qa.rankingOperationCheck.removed, "Drag-style removal should return a 
 assert.ok(qa.stepMarkup.every(item => !item.html.includes("其他（访谈）")), "Other options should not be labelled as interview prompts");
 const revealMarkup = qa.stepMarkup.find(item => item.step === "infoReveal").html;
 assert.ok(!revealMarkup.includes("第三步：确认你的选择") && !revealMarkup.includes("revealForm"), "Task 2-B should not include a third confirmation step");
+assert.ok(revealMarkup.includes('id="infoRevealSubmit"') && revealMarkup.includes("提交并继续") && revealMarkup.includes("disabled"), "Task 2-B should require an explicit submit after selecting an episode");
 assert.ok(!revealMarkup.includes("本期嘉宾：") && !revealMarkup.includes("鲁豫对话"), "Task 2-B cards should show clean titles without duplicated host and guest text");
 assert.ok(qa.task2bEpisodes.every(episode => episode.host && episode.guest && episode.commentCount >= 1 && episode.commentCount <= 2 && episode.commentsValid), "Each Task 2-B episode should have one or two valid matched comments");
 assert.ok(qa.commentMarkup.every(markup => markup.includes("comment-username") && markup.includes("comment-text")), "Task 2-B comments should render usernames and text on separate lines");
+assert.ok(qa.similarMarkup.every(markup => (markup.match(/<span>/g) || []).length === 3), "Each similar podcast recommendation should render on its own line");
 assert.ok(qa.fieldValuesComplete, "Every sourced Task 2-B field must have a value for every episode");
 assert.deepEqual([...qa.answerHeader], ["participant_id", "study_version", "question_id", "stage", "measure", "response", "duration_ms", "metadata"], "Answer CSV must use the analysis-ready schema");
-assert.equal(qa.sampleAnswerRows.length, 60, "Completed study export should contain one header and 59 answer rows");
+assert.equal(qa.sampleAnswerRows.length, 80, "Completed study export should contain one header and 79 answer rows");
 assert.ok(qa.sampleAnswerRows.slice(1).every(row => row[2] && row[4] && !row.includes(undefined)), "Every exported answer row must have a question ID, measure, and defined values");
-assert.equal(qa.studyVersion, 7, "Anonymous-session data schema should use study version 7");
+assert.equal(qa.studyVersion, 8, "Task 2-D redesign should use study version 8");
 assert.equal(qa.syncEndpoint, "/api/study/sync", "Client should target the same-origin Sites sync API");
 assert.ok(qa.eventHasStableId, "Behavior events need stable IDs for idempotent database writes");
 assert.match(qa.participantId, /^P-\d{8}-[A-F0-9]{24}$/, "Participant IDs need a high-entropy suffix");
 assert.equal(qa.stateContainsSessionToken, false, "The anonymous session token must not enter the synced/exported study state");
 assert.ok(qa.balanceCheck, "Each stable Task 3 question must reverse A/B positions between layout arms");
+assert.equal(Array.from(qa.contentTrials, item => item.featureType).join(","), "topic_keyword_timeline,transcript,timestamp_comment,sentiment_analysis,audio_features", "Task 2-D should use the five requested features in order");
+assert.ok(qa.contentTrials.every(item => item.id && item.q1.options.length === 4 && item.q2.options.length === 4), "Every Task 2-D trial needs stable IDs and two four-option questions");
+assert.ok(qa.contentTrials.every(item => item.arm0 !== item.arm1), "Task 2-D content arms must be complementary");
+assert.equal(qa.contentTrials.filter(item => !item.materialReady).length, 1, "Only the unverified timestamp-comment material should be marked pending");
 
 const rankingRows = qa.sampleAnswerRows.slice(1).filter(row => row[4] === "information_rank");
 assert.equal(rankingRows.length, 9, "Task 2-A CSV should contain one explicit rank row per stable field ID");
@@ -269,6 +286,15 @@ for (const row of task3Rows) {
   assert.ok(metadata.displayAType && metadata.displayBType, "Task 3 metadata must contain the actual displayed designs");
   assert.ok(metadata.canonicalAType && metadata.canonicalBType, "Task 3 metadata must preserve the fixed canonical pair");
   assert.ok([true, false].includes(metadata.sideSwapped), "Task 3 metadata must record whether sides were swapped");
+}
+
+const task2DRows = qa.sampleAnswerRows.slice(1).filter(row => row[3] === "Task 2-D");
+assert.equal(task2DRows.length, 25, "Task 2-D must export five measures for each of five trials");
+assert.deepEqual([...new Set(task2DRows.map(row => row[4]))].sort(), ["q1_answer","q1_correct","q2_answer","q2_correct","q3_ease_rating"].sort());
+for (const row of task2DRows) {
+  const metadata = JSON.parse(row[7]);
+  assert.ok(metadata.trialId && metadata.featureType && metadata.audioStartTime, "Task 2-D metadata must preserve trial, feature, and audio timing");
+  assert.ok(Array.isArray(metadata.playbackSeekEvents) && Array.isArray(metadata.featureUsageEvents), "Task 2-D metadata must preserve playback and feature usage events");
 }
 
 for (const item of qa.structureMarkup) {
