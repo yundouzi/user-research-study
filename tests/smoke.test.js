@@ -145,7 +145,18 @@ globalThis.__qa = {
     return pages;
   })(),
   structureMarkup: [5, 10, 15].flatMap(count => Object.keys(STRUCTURE_TYPES).map(type => ({ type, count, html: structureHTML(type, count) }))),
-  fieldValuesComplete: EPISODES.every(episode => INFORMATION_FIELDS.every(([field]) => Boolean(fieldValue(episode, field)))),
+  task2bFieldIds: INFORMATION_FIELDS.map(field => field.id),
+  task2bEpisodes: TASK2B_EPISODES.map(episode => ({
+    id: episode.id,
+    title: episode.title,
+    host: episode.host,
+    guest: episode.guest,
+    commentCount: episode.commentOverview.length,
+    commentsValid: episode.commentOverview.every(comment => Boolean(comment.username && comment.text))
+  })),
+  fieldValuesComplete: TASK2B_EPISODES.every(episode => INFORMATION_FIELDS
+    .every(field => Boolean(fieldValue(episode, field.id)))),
+  commentMarkup: TASK2B_EPISODES.map(episode => revealedFieldHTML(episode, "comments")),
   comparisonIds: STRUCTURE_COMPARISONS.map(item => item.id),
   answerHeader: answerRows()[0],
   sampleAnswerRows,
@@ -193,7 +204,8 @@ vm.runInContext(`${source}\n${instrumentation}`, context, { filename: "app.js" }
 const qa = context.__qa;
 
 assert.equal(qa.steps.length, 12, "Expected 12 study stages");
-assert.equal(qa.fieldCount, 13, "Expected 13 information fields");
+assert.equal(qa.fieldCount, 9, "Task 2-B should use the same nine information fields as Task 2-A");
+assert.deepEqual(qa.task2bFieldIds, qa.rankingFieldIds, "Task 2-A and Task 2-B must share the same stable field IDs");
 assert.equal(qa.rankingFieldIds.length, 9, "Task 2-A should contain exactly nine ranking fields");
 assert.equal(new Set(qa.rankingFieldIds).size, 9, "Task 2-A field IDs must be unique");
 assert.deepEqual(new Set(qa.rankingInitialOrder), new Set(qa.rankingFieldIds), "Initial ranking order must contain all nine stable field IDs exactly once");
@@ -227,7 +239,12 @@ assert.ok(qa.rankingOperationCheck.reordered, "Click placement should reorder ra
 assert.ok(qa.rankingOperationCheck.persisted, "Ranking changes should persist to localStorage for refresh recovery");
 assert.ok(qa.rankingOperationCheck.removed, "Drag-style removal should return a field to the unranked pool");
 assert.ok(qa.stepMarkup.every(item => !item.html.includes("其他（访谈）")), "Other options should not be labelled as interview prompts");
-assert.ok(qa.fieldValuesComplete, "Every reveal field must have a value for every episode");
+const revealMarkup = qa.stepMarkup.find(item => item.step === "infoReveal").html;
+assert.ok(!revealMarkup.includes("第三步：确认你的选择") && !revealMarkup.includes("revealForm"), "Task 2-B should not include a third confirmation step");
+assert.ok(!revealMarkup.includes("本期嘉宾：") && !revealMarkup.includes("鲁豫对话"), "Task 2-B cards should show clean titles without duplicated host and guest text");
+assert.ok(qa.task2bEpisodes.every(episode => episode.host && episode.guest && episode.commentCount >= 1 && episode.commentCount <= 2 && episode.commentsValid), "Each Task 2-B episode should have one or two valid matched comments");
+assert.ok(qa.commentMarkup.every(markup => markup.includes("comment-username") && markup.includes("comment-text")), "Task 2-B comments should render usernames and text on separate lines");
+assert.ok(qa.fieldValuesComplete, "Every sourced Task 2-B field must have a value for every episode");
 assert.deepEqual([...qa.answerHeader], ["participant_id", "study_version", "question_id", "stage", "measure", "response", "duration_ms", "metadata"], "Answer CSV must use the analysis-ready schema");
 assert.equal(qa.sampleAnswerRows.length, 60, "Completed study export should contain one header and 59 answer rows");
 assert.ok(qa.sampleAnswerRows.slice(1).every(row => row[2] && row[4] && !row.includes(undefined)), "Every exported answer row must have a question ID, measure, and defined values");

@@ -237,10 +237,15 @@ h3 { font-size: 18px; line-height: 1.4; }
 .episode-choice.selected { border-color: var(--green); box-shadow: 0 0 0 3px rgba(47,112,108,.13); background: #fbfffd; }
 .pod-cover { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 10px; background: linear-gradient(145deg,#173f29,#315f3e); color: #f5edc9; font: 700 13px/1.2 var(--serif); text-align: center; }
 .episode-title { display: block; font-weight: 850; line-height: 1.45; }
-.episode-meta { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; }
-.revealed-info { display: grid; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px solid #eee5d8; }
-.revealed-info span { font-size: 12px; line-height: 1.5; }
-.revealed-info b { color: var(--green); }
+.revealed-info { display: grid; gap: 14px; margin-top: 10px; padding-top: 9px; border-top: 1px solid #eee5d8; }
+.revealed-field { display: block; min-width: 0; font-size: 14px; line-height: 1.6; text-align: left; overflow-wrap: anywhere; }
+.revealed-field > b { display: block; margin-bottom: 3px; color: var(--green); }
+.revealed-value { display: block; }
+.revealed-info .empty { color: var(--muted); }
+.comment-list { display: grid; gap: 10px; }
+.comment-item, .comment-username, .comment-text { display: block; }
+.comment-username { margin-bottom: 2px; color: var(--muted); }
+.comment-text { color: var(--ink); }
 
 .scale-block { margin: 22px 0; }
 .scale-block > label { display: block; margin-bottom: 10px; font-weight: 850; }

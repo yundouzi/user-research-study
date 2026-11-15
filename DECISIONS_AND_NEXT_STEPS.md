@@ -6,7 +6,7 @@
 - Participant-facing open-ended text fields are excluded. Subjective prompts are marked “（访谈）”.
 - The pre-interview form collects podcast types and listening scenarios with a maximum of three selections each.
 - Task 1 contains eight structured items; continued-listening behavior allows two selections.
-- Task 2-A uses a complete 9-item horizontal ranking with stable field IDs; Task 2-B retains its existing 13 progressive-disclosure options and three-field limit pending a separate decision about reducing or relabelling those options.
+- Task 2-A and Task 2-B use the same nine stable information field IDs. Task 2-B keeps the three-field reveal limit, uses sourced episode metadata and completes when the participant selects an episode, without a separate confirmation step. Comment overviews remain intentionally empty until research data is supplied.
 - Each of the five within-episode features receives one 1–7 helpfulness rating.
 - Task 3 uses 12 A/B comparisons rather than 12 standalone Likert evaluations.
 - Each comparison asks visual comfort first and understanding second.

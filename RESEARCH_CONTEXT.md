@@ -46,7 +46,7 @@ Eight structured items record:
 
 ### T2-E01: direct ranking
 
-Participants rank nine episode-level information types: podcast title, hosts and guests, duration, topic tags, description, comments, play count, similar-podcast recommendations, and transcript. All nine items must be placed in a complete 1–9 order. Initial chip order is randomized per participant and recorded. Task 2-B currently retains its existing 13 progressive-disclosure options; the nine semantically corresponding options share stable field IDs with Task 2-A.
+Participants rank nine episode-level information types: podcast title, hosts and guests, duration, topic tags, description, comments, play count, similar-podcast recommendations, and transcript. All nine items must be placed in a complete 1–9 order. Initial chip order is randomized per participant and recorded. Task 2-B uses the same nine stable field IDs and allows participants to reveal up to three non-title fields before selecting an episode. Selecting an episode completes Task 2-B directly; there is no separate confirmation step.
 
 ### T2-E02: progressive disclosure
 

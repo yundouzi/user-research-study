@@ -74,22 +74,6 @@ const TASK_ONE_QUESTIONS = [
   }
 ];
 
-const INFORMATION_FIELDS = [
-  ["标题", "单集名称和核心表达"],
-  ["主持人", "主持人姓名"],
-  ["时长", "单集总时长"],
-  ["主题标签", "内容涉及的主题关键词"],
-  ["简介", "对单集内容的简要概括"],
-  ["评论概览", "听众评论中的主要观点"],
-  ["播放量", "单集的累计播放数据"],
-  ["相似播客", "与本期主题或内容相近的节目"],
-  ["转写文本", "音频对应的逐字文字内容"],
-  ["内容主题划分（时间轴）", "主题及其出现的时间位置"],
-  ["时间戳评论", "与具体音频位置关联的评论"],
-  ["情感分析", "不同片段的情绪方向与强度"],
-  ["音频分析特征", "语速、停顿、说话人切换等特征"]
-];
-
 const RANKING_FIELDS = [
   { id: "podcast_title", label: "播客标题" },
   { id: "hosts_guests", label: "主持人与嘉宾" },
@@ -102,16 +86,27 @@ const RANKING_FIELDS = [
   { id: "transcript", label: "转写文本" }
 ];
 
+// Task 2-A 与 Task 2-B 共用同一组稳定字段 ID。
+const INFORMATION_FIELDS = RANKING_FIELDS;
+const INFORMATION_LABELS = Object.fromEntries(RANKING_FIELDS.map(field => [field.id, field.label]));
+
 const INFORMATION_FIELD_IDS = {
+  "播客标题": "podcast_title",
+  "主持人与嘉宾": "hosts_guests",
+  "播客时长": "duration",
+  "主题标签": "topic_tags",
+  "播客简介": "description",
+  "评论区": "comments",
+  "播放量": "play_count",
+  "相似播客推荐": "similar_recommendations",
+  "转写文本": "transcript",
+  // 兼容旧版本参与者的本地状态与导出数据。
   "标题": "podcast_title",
   "主持人": "hosts_guests",
   "时长": "duration",
-  "主题标签": "topic_tags",
   "简介": "description",
   "评论概览": "comments",
-  "播放量": "play_count",
   "相似播客": "similar_recommendations",
-  "转写文本": "transcript",
   "内容主题划分（时间轴）": "topic_timeline",
   "时间戳评论": "timestamp_comments",
   "情感分析": "sentiment_analysis",
@@ -231,6 +226,113 @@ const EPISODES = [
     timestampComments: "43:52 ‘生活和创作在这里没有边界。’",
     sentiment: "整体温和积极；谈自然和儿童时积极度最高。",
     audioFeatures: "慢语速；平均停顿 1.5 秒；环境叙事多；声音能量平稳。"
+  }
+];
+
+// Task 2-B 使用项目资料库中的真实节目元数据与转写节选。
+// 评论为研究者根据真实评论截图整理的精选节选；播放量不使用评论数替代。
+const TASK2B_EPISODES = [
+  {
+    id: "S4E5", sourceEpisodeNumber: 33,
+    title: "S4E5 在迪士尼和HBO做高管，我卖过的电影比看过的多",
+    host: "陈鲁豫", guest: "范贝贝", duration: "1:16:30", playCount: 212661,
+    topicTags: ["代际关系和情感", "职业经历", "好莱坞的女明星与女性高管"],
+    description: "岩中花述第四季第五期节目，鲁豫和范贝贝聊起了传媒人的不同选择。与范贝贝有关的新闻常和大型企业的人事任命相关——华纳兄弟、迪士尼、HBO、苏富比，以至当被人问起有没有看过某部电影时，她总会很自豪地说“没有，但是我卖过。”但她更愿意聊的，是在南极跑马拉松时一望无垠的白色大陆，是在珠峰大本营仰望峰顶时的敬畏之心，还有第一次站上拳台挥出拳头后那种“再也没有不可能”的勇气。这种勇气，让她决意转换赛道，改变生活状态，甚至自己创业。",
+    commentOverview: [
+      { username: "花花菜", text: "这个贝贝不简单！内在比较强大，又不冒进又不自负，这个系列真的很好。" },
+      { username: "猫三思", text: "如果说毛尖老师给了好多灵感，这期贝贝老师在最后给了我一些勇气。" }
+    ],
+    similar: ["S3E5 你好像奈良美智画的那个小孩", "S4E9 身体的使用说明书，不能只有医生知道", "S9E2 我不优秀，但我依然是一个胜利者"],
+    transcriptExcerpt: "今天和我对谈的范贝贝，让我想到了1996年的一部电视剧。那一年范贝贝进入北京广播学院，就是现在的中国传媒大学电视编辑专业上学，我是在那一年去香港工作。此刻的贝贝在伦敦，也是非常巧合，贝贝碰巧是我在广院的学妹。"
+  },
+  {
+    id: "S8E4", sourceEpisodeNumber: 73,
+    title: "S8E4 飞向更高远的天空，即便空气稀薄",
+    host: "陈鲁豫", guest: "黎紫书", duration: "1:42:20", playCount: 1876041,
+    topicTags: ["文学阅读与写作成长", "作家成长与文学创作", "家庭关系与童年成长"],
+    description: "岩中花述第八季第四期节目，鲁豫撞上了“若吾不写，无人能写”的黎紫书。卖过鞋、做过厨房帮工、当过小学教师，也曾是《星洲日报》记者，如今，她是马来西亚知名的本土华文作家。家乡怡保没有文学的土壤，她抓住任何阅读的可能，终于在中学图书馆初遇《孔乙己》时真正感知到文学的能量。35岁时她决心飞往故国以外的世界，同时告别奖项、职业与婚姻，用诚实浇灌文字、将生命付诸文学。",
+    commentOverview: [
+      { username: "Allbetter", text: "打定主意做一个诚实的人，从此在江湖行走便更快意了。" }
+    ],
+    similar: ["S7E3 有些艰难无法走出，我始终与其共处", "S8E5 他已登岸归家，吾独续写“巫”言", "S7E5 爱，像颤动的内脏，也似地底的岩浆"],
+    transcriptExcerpt: "大家好，欢迎来到岩中花述。这两天北京天气好到让人无法相信，已经是秋天的尾声了。在这样一个秋天的尾声，我终于见到了黎紫书。她是来自马来西亚的作家，我在一两年前频繁听到她的名字，今天终于有机会与她见面。"
+  },
+  {
+    id: "S8E8", sourceEpisodeNumber: 77,
+    title: "S8E8 冰场上的向日葵，日复一日、向光疯长",
+    host: "陈鲁豫", guest: "张虹", duration: "1:29:03", playCount: 1616269,
+    topicTags: ["艺术审美与人生感悟", "女性成长与冠军心态", "竞技体育与奥运精神"],
+    description: "岩中花述第八季第八期节目，鲁豫带来了一棵在冰场生长的向日葵。7岁的张虹开始练习滑冰，她为滑冰付出23年光阴，走向一条没有退路的单行道。速度滑冰从不馈赠幸运，只能一次次把自己逼到极限。在夺冠与伤病之间，她靠一条主力腿完成了人生最后一场比赛。退役后，她将从竞技中继承的耐力带进更广阔的国际赛场，从零学习语言、规则与秩序。",
+    commentOverview: [
+      { username: "熙_RKFD", text: "这11分钟的独白真好，就像坐在我旁边和我娓娓道来的老友。" }
+    ],
+    similar: ["S5E1 相信日复一日的努力，是金斯伯格教会我的事", "S3E1 成名要趁早？你hold不住的时候反而更痛苦", "S6E3 壮阔与极限，在横断山脉，也在柴米油盐"],
+    transcriptExcerpt: "在加速、在起飞，我能感受到风声、感受到速度。过去一年我有一些印象很深刻的记忆想跟大家分享。第一个就是岩中花述在成都做的线下活动，与其说是我拥抱了1000个女孩，不如说是我被1000个女孩拥抱。"
+  },
+  {
+    id: "S9E2", sourceEpisodeNumber: 80,
+    title: "S9E2 我不优秀，但我依然是一个胜利者",
+    host: "陈鲁豫", guest: "张诺", duration: "1:19:09", playCount: 665259,
+    topicTags: ["家庭与童年成长", "职业生涯与退役转型", "赛车经历与竞技梦想"],
+    description: "岩中花述第九季第二期，鲁豫见到了前赛车手张诺。二十年前，她的人生是另一种速度。父亲痴迷赛车，她早早在心里种下了关于速度的想象。后来她通过女子赛车手选拔成为职业赛车手，在赛场上面对速度，也面对偏见。一次翻车成为梦魇，甲减改变了她的生理与心理，她选择结婚、生子，离开赛场。现在，她想重新回到赛场。",
+    commentOverview: [
+      { username: "赛车手张诺", text: "谢谢大家对我的鼓励，所有的留言我都有看，我会振作起来的😊" },
+      { username: "水色片羽", text: "这一季正在剥离精英叙事，普通人的故事当然值得被讲述。" }
+    ],
+    similar: ["S4E5 在迪士尼和HBO做高管，我卖过的电影比看过的多", "S3E9 知道自己是少数派，就不要分外在意孤独", "S3E3 天价拍卖背后，我们都是美的暂时保管者"],
+    transcriptExcerpt: "大家好，欢迎来到岩中花述。过往采访过的嘉宾都曾经做成过什么事。如果一个人没有成，她的故事还值得讲吗？如果你想听到的是一个普通人追求理想、没有成功、离开再回来、绝地反击的故事，你可能也会失望。今天讲的是一个女人决定去赛车，后来决定做妈妈，现在想再试一次回到赛场。"
+  },
+  {
+    id: "S7E7", sourceEpisodeNumber: 64,
+    title: "S7E7 敢于面向黑暗，恰因此心光明",
+    host: "陈鲁豫", guest: "劳东燕", duration: "1:15:36", playCount: 1775993,
+    topicTags: ["女性处境与性别平等", "性别教育与成长经历", "家庭责任与育儿观念"],
+    description: "岩中花述第七季第七期节目，鲁豫遇到正直、勇敢、有阅读量的劳东燕。她走上刑法学道路，有时运的掉落，有自身的优秀，也有不断剔除枝丫的个人选择。她关心社会事件中无力为自己争取权益的群体，提醒技术发展下对公民自由可能产生的风险，也希望更多女性走上决策位置。她相信法律是为捍卫良善价值观所拿起的武器。",
+    commentOverview: [
+      { username: "Ryann-", text: "劳东燕教授如此敏感，屡次马上get到鲁豫提问的底层在追问的是什么，并马上给出回答。这期听得真爽。" },
+      { username: "超人儿", text: "每次手机里蹦出鲁豫对谈嘉宾的名字，我第一反应就是怎么又不认识……" }
+    ],
+    similar: ["S5E7 哪有所谓的人生胜利组，坦然接受就会散发光芒", "S8E1 她可以为你而死，但不会只为你而活", "S7E9 要走多少路，才能成为一个女人，答案在风中飘荡"],
+    transcriptExcerpt: "大家好，欢迎来到岩中花述。今天请到的是清华大学法学院教授、博士生导师劳东燕。她研究的领域是刑法学，日常关注风险社会中的刑法理论和实践。在很多社会事件中，我们都可以听到她的声音。"
+  },
+  {
+    id: "S8E6", sourceEpisodeNumber: 75,
+    title: "S8E6 没有魅力的人，也值得拥有世界",
+    host: "陈鲁豫", guest: "鸟鸟", duration: "1:26:45", playCount: 3604567,
+    topicTags: ["女性成长与年龄焦虑", "艺术审美与个人表达", "脱口秀创作与女性表达"],
+    description: "岩中花述第八季第六期节目，鲁豫兑现了与鸟鸟的岩中花述之约。她学龄前常常独自在家，早早懂得了孤独的滋味；大学选择了并不喜欢的地质学专业，又跨学科考入北大中文。在怀疑中探索、经历自由职业与回归故里的尝试后，她遇到了脱口秀。漫长的自我挣扎在语言中被消解、治愈，她也终于感知到自己的存在很重要。",
+    commentOverview: [
+      { username: "禾尤山", text: "总有一款鄙视链适合你，哈哈哈。" },
+      { username: "老刘来了", text: "这期是鸟鸟，我还记得小帕那期，什么时候请李银河，许愿🎁" }
+    ],
+    similar: ["S9E3 我本布衣，种花种草种春天", "S4E6 译者就是躲在原文背后，一仆侍二主", "S6E9 命运无常，我有常"],
+    transcriptExcerpt: "大家好，欢迎来到岩中花述。今天的嘉宾是鸟鸟。我们图书在北京做线下首发时，鸟鸟从上海飞到北京做嘉宾，而且在现场主动问我什么时候可以采访她。我当时有一种灯下黑的感觉，这个嘉宾一直在我身边，于是我们立刻约了今天的时间。"
+  },
+  {
+    id: "S8E7", sourceEpisodeNumber: 76,
+    title: "S8E7 从“三反”到“银河”，她走出了时代",
+    host: "陈鲁豫", guest: "李银河", duration: "1:24:38", playCount: 2414677,
+    topicTags: ["写作、文学与作品", "家庭与童年记忆", "女性成长与社会学研究"],
+    description: "岩中花述第八季第七期节目，鲁豫与李银河在新时代的语境中，回望一个人如何被时代反复推搡，又如何一步步站稳自己。她的性别意识启蒙来源于家庭，后来在社会学研习班中第一次真正接触这门研究人如何生活的学问。她一生追求爱与美，与王小波在文学与思想中彼此确认，也在研究中关注女性、婚姻与社会的变化。",
+    commentOverview: [
+      { username: "清瘦似梅", text: "你好哇，李银河。" },
+      { username: "想飞的猫猫", text: "人生还是得紧着好日子先过，谁知道以后怎么样呢。" }
+    ],
+    similar: ["S7E2 永不做他人的缪斯，亲手写就我的故事", "S6E1 人这一生，不就是放多了收，收多了再放吗？", "S5E7 哪有所谓的人生胜利组，坦然接受就会散发光芒"],
+    transcriptExcerpt: "大家好，欢迎来到岩中花述。今天的嘉宾是李银河老师。对于岩中花述的听众来说，银河是一个不太需要定语、不太需要介绍的名字。她一直用温暖的语言表达很超前的观点，而且立场非常坚定。"
+  },
+  {
+    id: "S9E3", sourceEpisodeNumber: 81,
+    title: "S9E3 我本布衣，种花种草种春天",
+    host: "陈鲁豫", guest: "蔡皋", duration: "1:19:30", playCount: 698756,
+    topicTags: ["艺术审美与生活美学", "家庭教育与成长经历", "写作创作与人生阶段"],
+    description: "岩中花述第九季第三期节目，鲁豫在刚下过雨的春日清晨，与绘本画家蔡皋一同点石成绿。时代变动曾让她在乡下度过7年教学与劳作的光阴，但凭着“我喜欢，我选择”的主体性，她始终没有让绘画离开生活。36岁时她迈入绘本世界，55岁退休后迎来创作高峰，也在种植、土地与普通生活中形成了自己的美学。",
+    commentOverview: [
+      { username: "Giaaax", text: "太感人了，之前听岩中花述一直觉得鲁豫老师是那个兜底的人，但是在今天跟蔡皋老师的对话里面鲁豫老师也被赞扬了，像小女孩一样被女性长辈轻轻抚摸了🥺" },
+      { username: "cosmomomo", text: "大家爱你，知道不，鲁豫。" }
+    ],
+    similar: ["S4E6 译者就是躲在原文背后，一仆侍二主", "S8E3 从此我们不忧伤、不害怕", "S8E6 没有魅力的人，也值得拥有世界"],
+    transcriptExcerpt: "我采访蔡皋老师后，听说她获得了国际安徒生奖插画家奖，这是插画领域的重要荣誉。她说，得奖就好像在空旷的地方喊了一嗓子，突然听到了来自不同国度、超越语言的回声。接下来才是这期节目真正的开始。"
   }
 ];
 
@@ -427,6 +529,11 @@ function isCompleteRankingIdSet(values) {
   return Array.isArray(values) && values.length === expected.length && new Set(values).size === expected.length && values.every(value => expected.includes(value));
 }
 
+function normalizeInformationFieldId(value) {
+  if (RANKING_FIELDS.some(field => field.id === value)) return value;
+  return INFORMATION_FIELD_IDS[value] || "";
+}
+
 function newState() {
   const id = sessionCredential.participantId;
   return {
@@ -479,6 +586,9 @@ if (!Array.isArray(state.infoRanking) || state.infoRanking.some(id => !RANKING_F
   state.infoRanking = [];
 }
 state.rankingSelectedId = RANKING_FIELDS.some(field => field.id === state.rankingSelectedId) ? state.rankingSelectedId : "";
+state.selectedFields = [...new Set((Array.isArray(state.selectedFields) ? state.selectedFields : [])
+  .map(normalizeInformationFieldId)
+  .filter(id => id && id !== "podcast_title"))].slice(0, 3);
 state.needsIndex = Number.isInteger(state.needsIndex) ? Math.min(Math.max(state.needsIndex, 0), TASK_ONE_QUESTIONS.length - 1) : 0;
 state.needsResponses ||= state.answers.needs ? { ...state.answers.needs } : {};
 state.needsQuestionDurations ||= {};
@@ -919,30 +1029,37 @@ function renderInfoRank() {
     </section>`);
 }
 
-function fieldValue(episode, field) {
+function fieldValue(episode, fieldId) {
   const values = {
-    "标题": `${episode.id} 鲁豫对话${episode.guest}｜${episode.title}`,
-    "主持人": "陈鲁豫",
-    "时长": episode.duration,
-    "主题标签": episode.topics.join("、"),
-    "简介": episode.summary,
-    "评论概览": episode.comments,
-    "播放量": `${compactNumber(episode.plays)}次播放`,
-    "相似播客": episode.similar,
-    "转写文本": episode.transcript,
-    "内容主题划分（时间轴）": episode.timeline,
-    "时间戳评论": episode.timestampComments,
-    "情感分析": episode.sentiment,
-    "音频分析特征": episode.audioFeatures
+    podcast_title: episode.title,
+    hosts_guests: `主持人：${episode.host}；嘉宾：${episode.guest}`,
+    duration: episode.duration,
+    topic_tags: episode.topicTags.join("、"),
+    description: episode.description,
+    comments: episode.commentOverview,
+    play_count: `${compactNumber(episode.playCount)}次播放`,
+    similar_recommendations: episode.similar.join("；"),
+    transcript: episode.transcriptExcerpt
   };
-  return values[field] || "";
+  return values[fieldId] || "";
+}
+
+function revealedFieldHTML(episode, fieldId) {
+  const label = escapeHTML(INFORMATION_LABELS[fieldId]);
+  if (fieldId === "comments") {
+    return `<span class="revealed-field revealed-comments"><b>${label}</b><span class="comment-list">${episode.commentOverview.map(comment => `<span class="comment-item"><span class="comment-username">${escapeHTML(comment.username)}</span><span class="comment-text">${escapeHTML(comment.text)}</span></span>`).join("")}</span></span>`;
+  }
+  const value = fieldValue(episode, fieldId);
+  return `<span class="revealed-field ${value ? "" : "empty"}"><b>${label}</b><span class="revealed-value">${value ? escapeHTML(value) : "暂未提供"}</span></span>`;
 }
 
 function episodeChoiceHTML(episode) {
   return `<button class="episode-choice ${state.selectedEpisode === episode.id ? "selected" : ""}" type="button" data-episode-choice="${episode.id}">
     <span class="pod-cover">岩中<br>花述</span>
-    <span><span class="episode-title">${episode.id} 鲁豫对话${episode.guest}｜${episode.title}</span><span class="episode-meta">本期嘉宾：${episode.guest}</span>
-      ${state.selectedFields.length ? `<span class="revealed-info">${state.selectedFields.map(field => `<span><b>${field}：</b>${fieldValue(episode, field)}</span>`).join("")}</span>` : ""}
+    <span><span class="episode-title">${escapeHTML(episode.title)}</span>
+      ${state.selectedFields.length ? `<span class="revealed-info">${state.selectedFields.map(fieldId => {
+        return revealedFieldHTML(episode, fieldId);
+      }).join("")}</span>` : ""}
     </span>
   </button>`;
 }
@@ -951,18 +1068,14 @@ function renderInfoReveal() {
   return wrap(`${sectionHeader("Level 2 · Task 2-B", "选择信息，再选择想听的节目", "你最多可以逐步揭露 3 类信息。观察这些信息是否会改变你的判断。", `<span class="badge warm">已选 ${state.selectedFields.length}/3 类信息</span>`)}
     <section class="card">
       <h3>第一步：选择你想查看的信息</h3>
-      <p class="muted">标题会始终显示；其余信息会同时呈现在每一期节目中。</p>
-      <div class="field-picker">${INFORMATION_FIELDS.filter(item => item[0] !== "标题").map(([field]) => `<button class="field-chip ${state.selectedFields.includes(field) ? "selected" : ""}" type="button" data-field-choice="${field}">${field}</button>`).join("")}</div>
+      <p class="muted">播客标题会始终显示；其余信息会同时呈现在每一期节目中。</p>
+      <div class="field-picker">${INFORMATION_FIELDS.filter(field => field.id !== "podcast_title").map(field => `<button class="field-chip ${state.selectedFields.includes(field.id) ? "selected" : ""}" type="button" data-field-choice="${field.id}">${field.label}</button>`).join("")}</div>
     </section>
     <section class="card">
       <h3>第二步：选择一集你最想听的节目</h3>
-      <div class="episode-grid">${EPISODES.map(episodeChoiceHTML).join("")}</div>
-    </section>
-    <form id="revealForm" class="card">
-      <h3>第三步：确认你的选择</h3>
-      <div class="interview-callout"><b>（访谈）</b>哪些信息最影响你的决定？为什么？</div>
-      <div class="form-actions"><button class="button" type="submit">确认选择并继续</button></div>
-    </form>`);
+      <p class="muted">点击节目即完成本题并进入下一阶段。</p>
+      <div class="episode-grid">${TASK2B_EPISODES.map(episodeChoiceHTML).join("")}</div>
+    </section>`);
 }
 
 function renderScenario() {
@@ -1577,10 +1690,21 @@ document.addEventListener("click", event => {
 
   const episodeButton = event.target.closest("[data-episode-choice]");
   if (episodeButton) {
+    if (!state.selectedFields.length) {
+      return showIncompleteQuestion("第一步", "请至少选择一类信息", document.querySelector(".field-picker"));
+    }
     state.selectedEpisode = episodeButton.dataset.episodeChoice;
-    log("episode_select", state.selectedEpisode, { fields: [...state.selectedFields] });
+    state.answers.infoReveal = {
+      fields: state.selectedFields.map(id => INFORMATION_LABELS[id]),
+      fieldIds: [...state.selectedFields],
+      episode: state.selectedEpisode,
+      durationMs: pageDuration()
+    };
+    log("episode_select", state.selectedEpisode, { fieldIds: [...state.selectedFields] });
+    log("info_reveal_complete", state.selectedEpisode, state.answers.infoReveal);
     save();
-    render();
+    goTo("contentIntro");
+    return;
   }
 
   if (event.target.id === "contentBegin") {
@@ -1760,21 +1884,6 @@ document.addEventListener("submit", event => {
       save();
       goTo("infoRank");
     }
-  }
-
-  if (event.target.id === "revealForm") {
-    event.preventDefault();
-    if (!state.selectedFields.length) return showIncompleteQuestion("第一步", "请至少选择一类信息", event.target.previousElementSibling?.previousElementSibling);
-    if (!state.selectedEpisode) return showIncompleteQuestion("第二步", "请选择一集想听的节目", event.target.previousElementSibling);
-    state.answers.infoReveal = {
-      fields: [...state.selectedFields],
-      fieldIds: state.selectedFields.map(label => INFORMATION_FIELD_IDS[label]).filter(Boolean),
-      episode: state.selectedEpisode,
-      durationMs: pageDuration()
-    };
-    log("info_reveal_complete", state.selectedEpisode, state.answers.infoReveal);
-    save();
-    goTo("contentIntro");
   }
 
   if (event.target.id === "scenarioForm") {

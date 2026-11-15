@@ -76,7 +76,7 @@ For the local researcher view, copy `config.example.js` to Git-ignored `config.j
 
 ## Verification
 
-Automated smoke checks cover stage rendering, absence of open-ended text areas, the nine-field Task 2-A ranking, participant-specific initial order, drag/click placement operations, local refresh recovery, per-field CSV ranks, the 13-option Task 2-B field map, five content trials, 12 stable comparisons, opposite A/B layout arms, actual-combination metadata, high-entropy participant IDs, token exclusion, all four structures at 5/10/15 nodes, and answer schema. Worker checks cover anonymous authorization, unauthorized overwrite rejection, idempotent retries, stale-write rejection, explicit Task 3 export, static fallback, and both migrations.
+Automated smoke checks cover stage rendering, absence of open-ended text areas, the nine-field Task 2-A ranking, participant-specific initial order, drag/click placement operations, local refresh recovery, per-field CSV ranks, the shared nine-field Task 2-B map, sourced Task 2-B episode metadata, clean titles, removal of the extra confirmation step, five content trials, 12 stable comparisons, opposite A/B layout arms, actual-combination metadata, high-entropy participant IDs, token exclusion, all four structures at 5/10/15 nodes, and answer schema. Worker checks cover anonymous authorization, unauthorized overwrite rejection, idempotent retries, stale-write rejection, explicit Task 3 export, static fallback, and both migrations.
 
 ## Known limitations
 
