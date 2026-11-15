@@ -81,9 +81,17 @@ const instrumentation = `
 const originalAnswers = state.answers;
 state.answers = {
   profile: { gender:"female", age:22, listeningFrequency:"weekly1to2", platforms:["xiaoyuzhou"], podcastTypes:["society"], listeningScenes:["commute"], creationExperience:"no", showFamiliarity:"oneOrTwo", durationMs:1000 },
-  needs: { listeningPreference:"newInteresting", discoveryStart:"search", mostWantedInfo:"what", informationNeed:"summary", decisionTime:"threeToTen", mismatchAction:"seek", refindFrequency:"sometimes", afterListening:["similar"], durationMs:1000 },
-  infoRanking: { order: INFORMATION_FIELDS.map(item => item[0]), durationMs:1000 },
-  infoReveal: { fields:["主题标签"], episode:"S8E4", durationMs:1000 },
+  needs: { listeningPreference:"newInteresting", discoveryStart:["search","friends"], mostWantedInfo:["what","depth"], informationNeed:"summary", decisionTime:"threeToTen", mismatchAction:"seek", refindFrequency:"sometimes", afterListening:"similar", durationMs:1000 },
+  infoRanking: {
+    order: RANKING_FIELDS.map(item => item.id),
+    orderLabels: RANKING_FIELDS.map(item => item.label),
+    initialOrder: [...RANKING_FIELDS].reverse().map(item => item.id),
+    initialOrderLabels: [...RANKING_FIELDS].reverse().map(item => item.label),
+    ranks: RANKING_FIELDS.map((item,index) => ({ fieldId:item.id, rank:index + 1 })),
+    durationMs:1000,
+    completedAt:"2026-01-01T00:00:00.000Z"
+  },
+  infoReveal: { fields:["主题标签"], fieldIds:["topic_tags"], episode:"S8E4", durationMs:1000 },
   contentTrials: Object.fromEntries(CONTENT_TRIALS.map((trial,index) => [index,{ feature:trial.feature, help:5, featureOpened:true, elapsedMs:1000, audioConfigured:false }])),
   structureTrials: Object.fromEntries(state.structureComparisons.map((comparison,index) => [index,{
     questionId:comparison.id,
@@ -110,6 +118,14 @@ state.answers = originalAnswers;
 globalThis.__qa = {
   steps: [...STEPS],
   fieldCount: INFORMATION_FIELDS.length,
+  rankingFieldIds: RANKING_FIELDS.map(item => item.id),
+  rankingInitialOrder: [...state.infoRankingInitial],
+  rankingRandomizationCheck: (() => {
+    const first = rankingInitialOrder("participant-a");
+    const repeat = rankingInitialOrder("participant-a");
+    const second = rankingInitialOrder("participant-b");
+    return { deterministic: first.join(",") === repeat.join(","), participantVariation: first.join(",") !== second.join(",") };
+  })(),
   contentTrialCount: CONTENT_TRIALS.length,
   episodeCount: STRUCTURE_EPISODES.length,
   comparisons: [...state.structureComparisons],
@@ -119,6 +135,15 @@ globalThis.__qa = {
     if (step === "structureTrial") state.structureIndex = 0;
     return { step, html: RENDERERS[step]() };
   }),
+  needsQuestionMarkup: (() => {
+    const originalIndex = state.needsIndex;
+    const pages = TASK_ONE_QUESTIONS.map((question, index) => {
+      state.needsIndex = index;
+      return { key: question.key, type: question.type, html: renderNeeds() };
+    });
+    state.needsIndex = originalIndex;
+    return pages;
+  })(),
   structureMarkup: [5, 10, 15].flatMap(count => Object.keys(STRUCTURE_TYPES).map(type => ({ type, count, html: structureHTML(type, count) }))),
   fieldValuesComplete: EPISODES.every(episode => INFORMATION_FIELDS.every(([field]) => Boolean(fieldValue(episode, field)))),
   comparisonIds: STRUCTURE_COMPARISONS.map(item => item.id),
@@ -128,6 +153,28 @@ globalThis.__qa = {
   syncEndpoint: SYNC_ENDPOINT,
   participantId: state.participantId,
   stateContainsSessionToken: Object.hasOwn(state, "sessionToken") || JSON.stringify(state).includes(sessionCredential.token),
+  rankingOperationCheck: (() => {
+    const originalRanking = [...state.infoRanking];
+    const originalSelected = state.rankingSelectedId;
+    const originalEventsLength = state.events.length;
+    const originalSequence = state.nextEventSequence;
+    const [first, second] = RANKING_FIELDS.map(item => item.id);
+    state.infoRanking = [];
+    placeRankingItem(first, 0, "drag", true);
+    placeRankingItem(second, 1, "click", true);
+    placeRankingItem(first, 1, "click", true);
+    const expectedOrder = second + "," + first;
+    const reordered = state.infoRanking.join(",") === expectedOrder;
+    const persisted = JSON.parse(localStorage.getItem(STORAGE_KEY)).infoRanking.join(",") === expectedOrder;
+    removeRankingItem(first, "drag");
+    const removed = state.infoRanking.join(",") === second;
+    state.infoRanking = originalRanking;
+    state.rankingSelectedId = originalSelected;
+    state.events.splice(originalEventsLength);
+    state.nextEventSequence = originalSequence;
+    save({ sync:false, touch:false });
+    return { reordered, persisted, removed };
+  })(),
   balanceCheck: (() => {
     const arm0 = balancedComparisons("fixed-participant", 0).sort((a,b) => a.id.localeCompare(b.id));
     const arm1 = balancedComparisons("fixed-participant", 1).sort((a,b) => a.id.localeCompare(b.id));
@@ -147,6 +194,10 @@ const qa = context.__qa;
 
 assert.equal(qa.steps.length, 12, "Expected 12 study stages");
 assert.equal(qa.fieldCount, 13, "Expected 13 information fields");
+assert.equal(qa.rankingFieldIds.length, 9, "Task 2-A should contain exactly nine ranking fields");
+assert.equal(new Set(qa.rankingFieldIds).size, 9, "Task 2-A field IDs must be unique");
+assert.deepEqual(new Set(qa.rankingInitialOrder), new Set(qa.rankingFieldIds), "Initial ranking order must contain all nine stable field IDs exactly once");
+assert.ok(qa.rankingRandomizationCheck.deterministic && qa.rankingRandomizationCheck.participantVariation, "Initial order should be reproducible per participant and vary between participants");
 assert.equal(qa.contentTrialCount, 5, "Expected five within-episode trials");
 assert.ok(qa.episodeCount >= 15, "Expected at least 15 structure episodes");
 assert.equal(qa.comparisons.length, 12, "Expected twelve structure comparisons");
@@ -154,9 +205,31 @@ assert.equal(new Set(qa.comparisons.map(item => item.id)).size, 12, "Structure c
 assert.equal(new Set(qa.comparisonIds).size, 12, "Comparison source definitions must be unique");
 assert.ok(qa.stepMarkup.every(item => item.html && !item.html.includes("undefined")), "Every stage must render without undefined content");
 assert.ok(qa.stepMarkup.every(item => !item.html.includes("<textarea")), "Participant stages must not contain open-ended text areas");
+const profileMarkup = qa.stepMarkup.find(item => item.step === "profile").html;
+const needsMarkup = qa.needsQuestionMarkup.map(item => item.html).join("\n");
+const scenarioMarkup = qa.stepMarkup.find(item => item.step === "scenario").html;
+assert.ok(!profileMarkup.includes("请先完成以下表单"), "Profile page should not show the removed explanatory copy");
+assert.ok(profileMarkup.includes('placeholder="请输入年龄"') && !profileMarkup.includes("请输入周岁"), "Age should use only the requested input placeholder");
+assert.ok(profileMarkup.includes("platformOtherField") && profileMarkup.includes("podcastTypeOtherField"), "Profile other options need conditional text inputs");
+assert.ok(needsMarkup.includes("discoveryStartOtherField") && needsMarkup.includes("mostWantedInfoOtherField"), "Task 1 other options need conditional text inputs");
+assert.equal(qa.needsQuestionMarkup.length, 8, "Task 1 should render eight separate question pages");
+assert.ok(qa.needsQuestionMarkup.every(item => (item.html.match(/class=\"card question-card\"/g) || []).length === 1), "Each Task 1 page should contain exactly one question card");
+assert.ok(qa.needsQuestionMarkup[0].html.includes("task-one-choice-list") && !qa.needsQuestionMarkup[0].html.includes("two-columns"), "Task 1 question 1 choices should each occupy one row");
+assert.ok(qa.needsQuestionMarkup[1].html.includes('type="checkbox"') && qa.needsQuestionMarkup[1].html.includes('data-choice-limit="2"'), "Task 1 question 2 should allow up to two choices");
+assert.ok(qa.needsQuestionMarkup[2].html.includes('type="checkbox"') && qa.needsQuestionMarkup[2].html.includes('data-choice-limit="2"'), "Task 1 question 3 should allow up to two choices");
+assert.ok(qa.needsQuestionMarkup[7].html.includes('type="radio"') && !qa.needsQuestionMarkup[7].html.includes('type="checkbox"'), "Task 1 question 8 should be single choice");
+assert.ok(scenarioMarkup.includes("scenarioEpisodeOtherField"), "Scenario other option needs a conditional text input");
+const rankingMarkup = qa.stepMarkup.find(item => item.step === "infoRank").html;
+assert.ok(rankingMarkup.includes("ranking-chip-box") && rankingMarkup.includes("ranking-axis"), "Task 2-A should render a chip pool and continuous ranking axis");
+assert.ok(rankingMarkup.includes("已排列 0/9 项"), "Task 2-A should show live completion count");
+assert.ok(rankingMarkup.includes("disabled"), "Task 2-A submit should be disabled until all nine fields are ranked");
+assert.ok(qa.rankingOperationCheck.reordered, "Click placement should reorder ranked fields");
+assert.ok(qa.rankingOperationCheck.persisted, "Ranking changes should persist to localStorage for refresh recovery");
+assert.ok(qa.rankingOperationCheck.removed, "Drag-style removal should return a field to the unranked pool");
+assert.ok(qa.stepMarkup.every(item => !item.html.includes("其他（访谈）")), "Other options should not be labelled as interview prompts");
 assert.ok(qa.fieldValuesComplete, "Every reveal field must have a value for every episode");
 assert.deepEqual([...qa.answerHeader], ["participant_id", "study_version", "question_id", "stage", "measure", "response", "duration_ms", "metadata"], "Answer CSV must use the analysis-ready schema");
-assert.equal(qa.sampleAnswerRows.length, 51, "Completed study export should contain one header and 50 answer rows");
+assert.equal(qa.sampleAnswerRows.length, 60, "Completed study export should contain one header and 59 answer rows");
 assert.ok(qa.sampleAnswerRows.slice(1).every(row => row[2] && row[4] && !row.includes(undefined)), "Every exported answer row must have a question ID, measure, and defined values");
 assert.equal(qa.studyVersion, 7, "Anonymous-session data schema should use study version 7");
 assert.equal(qa.syncEndpoint, "/api/study/sync", "Client should target the same-origin Sites sync API");
@@ -164,6 +237,13 @@ assert.ok(qa.eventHasStableId, "Behavior events need stable IDs for idempotent d
 assert.match(qa.participantId, /^P-\d{8}-[A-F0-9]{24}$/, "Participant IDs need a high-entropy suffix");
 assert.equal(qa.stateContainsSessionToken, false, "The anonymous session token must not enter the synced/exported study state");
 assert.ok(qa.balanceCheck, "Each stable Task 3 question must reverse A/B positions between layout arms");
+
+const rankingRows = qa.sampleAnswerRows.slice(1).filter(row => row[4] === "information_rank");
+assert.equal(rankingRows.length, 9, "Task 2-A CSV should contain one explicit rank row per stable field ID");
+assert.deepEqual(rankingRows.map(row => row[2]), qa.rankingFieldIds.map(id => `T2-E01-${id}`), "Task 2-A rank rows should use stable field IDs");
+assert.equal(Array.from(rankingRows, row => row[5]).join(","), "1,2,3,4,5,6,7,8,9", "Task 2-A CSV should export ranks 1 through 9");
+const revealRow = qa.sampleAnswerRows.slice(1).find(row => row[2] === "T2-E02");
+assert.deepEqual(JSON.parse(revealRow[7]).selectedFieldIds, ["topic_tags"], "Task 2-B export should include stable field IDs shared with Task 2-A");
 
 const task3Rows = qa.sampleAnswerRows.slice(1).filter(row => row[3] === "Task 3");
 assert.equal(task3Rows.length, 24, "Task 3 must export visual comfort and understanding as separate rows");

@@ -37,6 +37,43 @@ const STEP_LABELS = {
   complete: "完成"
 };
 
+const TASK_ONE_QUESTIONS = [
+  {
+    key: "listeningPreference", type: "radio", title: "你一般更倾向于收听：",
+    options: [["subscribedNew","A. 订阅节目的新播客"],["heardOld","B. 听过的旧播客"],["newInteresting","C. 感兴趣的新内容，不在乎是否订阅"]]
+  },
+  {
+    key: "discoveryStart", type: "checkbox", max: 2, title: "当你想寻找新的播客内容时，通常从哪里开始？",
+    options: [["home","A. 平台首页或排行榜推荐"],["search","B. 关键词搜索"],["subscriptions","C. 订阅列表中的节目"],["social","D. 社交媒体推荐"],["friends","E. 朋友推荐"],["ai","F. AI 推荐"],["other","G. 其他"]],
+    otherKey: "discoveryStartOther", otherPlaceholder: "请填写其他寻找方式"
+  },
+  {
+    key: "mostWantedInfo", type: "checkbox", max: 2, title: "在决定是否收听一集陌生播客时，你最希望知道的是什么？",
+    options: [["what","A. 这期播客究竟讨论什么"],["depth","B. 讨论是否足够深入"],["guest","C. 嘉宾的观点是否值得听"],["context","D. 音频是否适合当前场景或时间"],["interest","E. 内容是否符合自己的兴趣"],["other","F. 其他"]],
+    otherKey: "mostWantedInfoOther", otherPlaceholder: "请填写其他信息"
+  },
+  {
+    key: "informationNeed", type: "radio", title: "在收听播客前，你认为多大程度上需要了解播客的内容信息？",
+    options: [["blind","A. 完全不知道，开盲盒也可以"],["type","B. 至少知道是哪个类型的播客"],["topicGuest","C. 至少知道主题、嘉宾"],["summary","D. 至少知道以上信息，并看过内容简介"],["reviews","E. 知道以上所有信息，并查看评论区评价"],["transcript","F. 还会浏览转写文本"]]
+  },
+  {
+    key: "decisionTime", type: "radio", title: "一般情况下，你需要听多久来决定继续收听还是退出？",
+    options: [["under1","A. 1 分钟内"],["oneToThree","B. 1—3 分钟"],["threeToTen","C. 3—10 分钟"],["tenToThirty","D. 10—30 分钟"],["overThirty","E. 30 分钟以上"]]
+  },
+  {
+    key: "mismatchAction", type: "radio", title: "如果听后发现一集播客不符合预期，你通常会怎么做？",
+    options: [["exit","A. 立即退出"],["seek","B. 跳到其他时间位置继续尝试"],["speed","C. 加速收听"],["finish","D. 仍然继续听完"],["rare","E. 很少出现这种情况"]]
+  },
+  {
+    key: "refindFrequency", type: "radio", title: "有一期播客你非常喜欢，你是否试图回溯找到其中某一句言论或观点？",
+    options: [["often","A. 经常"],["sometimes","B. 偶尔"],["rarely","C. 很少"],["never","D. 从未"]]
+  },
+  {
+    key: "afterListening", type: "radio", title: "听完一期播客后，你意犹未尽，你会选择什么样的播客继续收听？",
+    options: [["nextShow","A. 同栏目的下一期播客"],["system","B. 系统推荐的下一期播客"],["similar","C. 主题类似的播客"],["stop","D. 不再继续听"]]
+  }
+];
+
 const INFORMATION_FIELDS = [
   ["标题", "单集名称和核心表达"],
   ["主持人", "主持人姓名"],
@@ -52,6 +89,34 @@ const INFORMATION_FIELDS = [
   ["情感分析", "不同片段的情绪方向与强度"],
   ["音频分析特征", "语速、停顿、说话人切换等特征"]
 ];
+
+const RANKING_FIELDS = [
+  { id: "podcast_title", label: "播客标题" },
+  { id: "hosts_guests", label: "主持人与嘉宾" },
+  { id: "duration", label: "播客时长" },
+  { id: "topic_tags", label: "主题标签" },
+  { id: "description", label: "播客简介" },
+  { id: "comments", label: "评论区" },
+  { id: "play_count", label: "播放量" },
+  { id: "similar_recommendations", label: "相似播客推荐" },
+  { id: "transcript", label: "转写文本" }
+];
+
+const INFORMATION_FIELD_IDS = {
+  "标题": "podcast_title",
+  "主持人": "hosts_guests",
+  "时长": "duration",
+  "主题标签": "topic_tags",
+  "简介": "description",
+  "评论概览": "comments",
+  "播放量": "play_count",
+  "相似播客": "similar_recommendations",
+  "转写文本": "transcript",
+  "内容主题划分（时间轴）": "topic_timeline",
+  "时间戳评论": "timestamp_comments",
+  "情感分析": "sentiment_analysis",
+  "音频分析特征": "audio_features"
+};
 
 const THEME_META = {
   growth: { label: "个人成长", color: "#c8727d" },
@@ -257,6 +322,7 @@ const app = document.querySelector("#app");
 const toastElement = document.querySelector("#toast");
 const accessDialog = document.querySelector("#accessDialog");
 let countdownTimer = null;
+let invalidNoticeActive = false;
 let configAttempted = false;
 let syncTimer = null;
 let syncInFlight = false;
@@ -346,6 +412,21 @@ function balancedComparisons(id, layoutArm) {
   return comparisons;
 }
 
+function rankingInitialOrder(participantId) {
+  const ids = RANKING_FIELDS.map(field => field.id);
+  const random = seededRandom(`${participantId}-task2a-ranking`);
+  for (let index = ids.length - 1; index > 0; index -= 1) {
+    const target = Math.floor(random() * (index + 1));
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+  }
+  return ids;
+}
+
+function isCompleteRankingIdSet(values) {
+  const expected = RANKING_FIELDS.map(field => field.id);
+  return Array.isArray(values) && values.length === expected.length && new Set(values).size === expected.length && values.every(value => expected.includes(value));
+}
+
 function newState() {
   const id = sessionCredential.participantId;
   return {
@@ -356,9 +437,14 @@ function newState() {
     createdAt: new Date().toISOString(),
     answers: {},
     events: [],
-    infoRanking: INFORMATION_FIELDS.map(item => item[0]),
+    infoRankingInitial: rankingInitialOrder(id),
+    infoRanking: [],
+    rankingSelectedId: "",
     selectedFields: [],
     selectedEpisode: "",
+    needsIndex: 0,
+    needsResponses: {},
+    needsQuestionDurations: {},
     contentIndex: 0,
     contentStarts: {},
     featureOpen: {},
@@ -386,6 +472,16 @@ function loadState() {
 
 let sessionCredential = loadSessionCredential();
 let state = loadState();
+if (!isCompleteRankingIdSet(state.infoRankingInitial)) state.infoRankingInitial = rankingInitialOrder(state.participantId);
+if (!Array.isArray(state.infoRanking) || state.infoRanking.some(id => !RANKING_FIELDS.some(field => field.id === id)) || new Set(state.infoRanking).size !== state.infoRanking.length) {
+  if (Array.isArray(state.infoRanking) && state.infoRanking.length) state.legacyInfoRanking = [...state.infoRanking];
+  if (state.answers.infoRanking && !state.answers.infoRankingLegacy) state.answers.infoRankingLegacy = state.answers.infoRanking;
+  state.infoRanking = [];
+}
+state.rankingSelectedId = RANKING_FIELDS.some(field => field.id === state.rankingSelectedId) ? state.rankingSelectedId : "";
+state.needsIndex = Number.isInteger(state.needsIndex) ? Math.min(Math.max(state.needsIndex, 0), TASK_ONE_QUESTIONS.length - 1) : 0;
+state.needsResponses ||= state.answers.needs ? { ...state.answers.needs } : {};
+state.needsQuestionDurations ||= {};
 let pendingSync = (() => {
   try {
     const saved = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "null");
@@ -572,6 +668,15 @@ function toast(message) {
   window.setTimeout(() => toastElement.classList.remove("show"), 2200);
 }
 
+function showIncompleteQuestion(number, message, target) {
+  const container = target?.closest?.(".question-card, .pair-question, .scale-block") || target?.querySelector?.(".question-card, .pair-question, .scale-block") || target;
+  const prefix = /^\d+$/.test(String(number)) ? `第 ${number} 题` : String(number);
+  toast(`${prefix}未完成：${message}`);
+  container?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  const input = container?.matches?.("input, select") ? container : container?.querySelector?.("input:not([type='hidden']), select, button");
+  window.setTimeout(() => input?.focus?.(), 250);
+}
+
 function pageDuration() {
   return Math.max(0, Date.now() - (state.pageEnteredAt || Date.now()));
 }
@@ -595,6 +700,14 @@ function goTo(step) {
 
 function goBack() {
   if (state.step === "intro") return;
+  if (state.step === "needs" && state.needsIndex > 0) {
+    state.needsIndex -= 1;
+    state.pageEnteredAt = Date.now();
+    save();
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
   if (state.step === "contentTrial" && state.contentIndex > 0) {
     state.contentIndex -= 1;
     state.pageEnteredAt = Date.now();
@@ -622,6 +735,7 @@ function goBack() {
     scenario: "interview",
     complete: "scenario"
   }[state.step] || "intro";
+  if (state.step === "infoRank") state.needsIndex = TASK_ONE_QUESTIONS.length - 1;
   if (state.step === "structureIntro") state.contentIndex = CONTENT_TRIALS.length - 1;
   if (state.step === "interview") state.structureIndex = state.structureComparisons.length - 1;
   goTo(previous);
@@ -646,7 +760,7 @@ function wrap(content, className = "") {
 }
 
 function sectionHeader(eyebrow, title, copy, meta = "") {
-  return `<div class="section-head"><div class="section-copy"><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p class="lede">${copy}</p></div>${meta ? `<div class="section-meta">${meta}</div>` : ""}</div>`;
+  return `<div class="section-head"><div class="section-copy"><div class="eyebrow">${eyebrow}</div><h1>${title}</h1>${copy ? `<p class="lede">${copy}</p>` : ""}</div>${meta ? `<div class="section-meta">${meta}</div>` : ""}</div>`;
 }
 
 function scaleHTML(id, max, leftLabel, rightLabel, selected = "") {
@@ -662,16 +776,15 @@ function renderIntro() {
   return wrap(`<div class="hero">
     <section class="hero-panel">
       <div class="eyebrow">Podcast information study</div>
-      <h1>播客信息如何帮助我们理解与选择？</h1>
-      <p class="lede">本研究关注用户的真实需求、不同信息的价值，以及播客内容最适合怎样组织和呈现。</p>
-      <div class="level-strip">
-        <div class="level-item"><b>LEVEL 1</b><span>发现需求</span></div>
-        <div class="level-item"><b>LEVEL 2</b><span>验证信息价值</span></div>
-        <div class="level-item"><b>LEVEL 3</b><span>确定设计形式</span></div>
+      <h1>关于播客浏览与推荐方式的用户研究</h1>
+      <div class="intro-copy">
+        <p>你平时是怎么找到感兴趣的播客的？在决定听哪一期时，你会关注标题、嘉宾、内容简介，还是其他听众的评论？</p>
+        <p>我们希望通过这次研究，了解大家平时寻找和选择播客的习惯，以及哪些信息能帮助你更方便地找到喜欢的内容。</p>
+        <p>在接下来的体验中，你将回答一些简单的问题，尝试浏览播客内容，并比较几种不同的页面设计。我们想听听你的真实感受，一起探索更方便、更舒适的播客浏览方式。</p>
+        <p><strong>本研究没有标准答案，请按照自己的习惯和喜好作答。</strong></p>
       </div>
-      <div class="notice green" style="margin-top:24px">请勿填写真实姓名、手机号或其他可识别身份的信息。作答会暂存在本机浏览器中。</div>
       <label class="choice" style="margin-top:20px"><input type="checkbox" id="consentCheck"><span>我已了解研究流程，并同意参与本次测试。</span></label>
-      <div class="form-actions"><button class="button" id="introNext" type="button" disabled>填写参与者信息</button></div>
+      <div class="form-actions"><button class="button" id="introNext" type="button" disabled>开始</button></div>
     </section>
     <aside class="hero-art" aria-label="研究参与者编号">
       <div class="hero-art-copy"><span>参与者编号</span><strong>${state.participantId}</strong></div>
@@ -688,7 +801,7 @@ function limitedCheckboxChoices(name, options, limit, counterId) {
 }
 
 function renderProfile() {
-  return wrap(`${sectionHeader("Before all tasks", "参与者基本信息", "请先完成以下表单。参与者编号已自动生成，不需要填写姓名或联系方式。", `<span class="badge">约 3 分钟</span>`)}
+  return wrap(`${sectionHeader("Before all tasks", "参与者基本信息", "", `<span class="badge">约 3 分钟</span>`)}
     <form id="profileForm" class="narrow">
       <section class="card">
         <label class="field-label" for="participantIdDisplay">参与者编号</label>
@@ -700,8 +813,7 @@ function renderProfile() {
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">2</span><span>年龄</span></div>
-        <label class="field-label" for="participantAge">请输入周岁</label>
-        <input class="text-input" id="participantAge" name="age" type="number" min="12" max="100" inputmode="numeric" required placeholder="例如：26">
+        <input class="text-input" id="participantAge" name="age" type="number" min="12" max="100" inputmode="numeric" required placeholder="请输入年龄" aria-label="请输入年龄">
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">3</span><span>播客收听频率</span></div>
@@ -709,11 +821,17 @@ function renderProfile() {
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">4</span><span>常用播客平台 <small class="muted">（可多选）</small></span></div>
-        ${checkboxChoices("platforms", [["ximalaya","喜马拉雅"],["xiaoyuzhou","小宇宙"],["apple","Apple 播客"],["youtube","YouTube"],["other","其他（访谈）"]])}
+        ${checkboxChoices("platforms", [["ximalaya","喜马拉雅"],["xiaoyuzhou","小宇宙"],["apple","Apple 播客"],["youtube","YouTube"],["other","其他"]])}
+        <div class="conditional-other-field" id="platformOtherField" hidden>
+          <input class="text-input other-input" id="platformOther" name="platformOther" type="text" maxlength="100" placeholder="请填写其他平台" aria-label="请填写其他平台">
+        </div>
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">5</span><span>常听的播客类型 <small class="muted">（最多选 3 项）</small></span></div>
-        ${limitedCheckboxChoices("podcastTypes", [["business","商业"],["growthCareer","自我成长与职业探索"],["society","社会"],["stories","故事奇谈"],["humanitiesHistory","人文历史"],["technology","科技"],["health","医疗健康"],["foodLife","饮食生活"],["art","艺术"],["music","音乐"],["casualTalk","趣味闲谈"],["other","其他（访谈）"]], 3, "podcastTypeCount")}
+        ${limitedCheckboxChoices("podcastTypes", [["business","商业"],["growthCareer","自我成长与职业探索"],["society","社会"],["stories","故事奇谈"],["humanitiesHistory","人文历史"],["technology","科技"],["health","医疗健康"],["foodLife","饮食生活"],["art","艺术"],["music","音乐"],["casualTalk","趣味闲谈"],["other","其他"]], 3, "podcastTypeCount")}
+        <div class="conditional-other-field" id="podcastTypeOtherField" hidden>
+          <input class="text-input other-input" id="podcastTypeOther" name="podcastTypeOther" type="text" maxlength="100" placeholder="请填写其他播客类型" aria-label="请填写其他播客类型">
+        </div>
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">6</span><span>收听播客的场景 <small class="muted">（最多选 3 项）</small></span></div>
@@ -735,34 +853,70 @@ function radioChoices(name, options, required = true) {
   return `<div class="choice-list two-columns">${options.map(([value, label]) => `<label class="choice"><input type="radio" name="${name}" value="${value}" ${required ? "required" : ""}><span>${label}</span></label>`).join("")}</div>`;
 }
 
+function taskOneChoices(question, selected) {
+  const selectedValues = Array.isArray(selected) ? selected : selected ? [selected] : [];
+  const counterId = `${question.key}Count`;
+  const inputs = question.options.map(([value, label]) => {
+    const checked = selectedValues.includes(value) ? "checked" : "";
+    const limitData = question.type === "checkbox" ? `data-choice-limit="${question.max}" data-choice-group="${question.key}" data-counter-id="${counterId}"` : "required";
+    return `<label class="choice"><input type="${question.type}" name="${question.key}" value="${value}" ${checked} ${limitData}><span>${label}</span></label>`;
+  }).join("");
+  const counter = question.type === "checkbox" ? `<p class="helper" id="${counterId}">已选 ${selectedValues.length}/${question.max}</p>` : "";
+  return `<div class="choice-list task-one-choice-list">${inputs}</div>${counter}`;
+}
+
 function renderNeeds() {
-  return wrap(`${sectionHeader("Level 1 · Task 1", "用户的需求", "请根据你平时使用播客平台的真实习惯作答。", `<span class="badge">约 5 分钟</span>`)}
-    <form id="needsForm" class="narrow">
-      <section class="card question-card"><div class="question-title"><span class="question-number">1</span><span>你一般更倾向于收听：</span></div>${radioChoices("listeningPreference", [["subscribedNew","A. 订阅节目的新播客"],["heardOld","B. 听过的旧播客"],["newInteresting","C. 感兴趣的新内容，不在乎是否订阅"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">2</span><span>当你想寻找新的播客内容时，通常从哪里开始？</span></div>${radioChoices("discoveryStart", [["home","A. 平台首页或排行榜推荐"],["search","B. 关键词搜索"],["subscriptions","C. 订阅列表中的节目"],["social","D. 社交媒体推荐"],["friends","E. 朋友推荐"],["ai","F. AI 推荐"],["other","G. 其他（访谈）"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">3</span><span>在决定是否收听一集陌生播客时，你最希望知道的是什么？</span></div>${radioChoices("mostWantedInfo", [["what","A. 这期播客究竟讨论什么"],["depth","B. 讨论是否足够深入"],["guest","C. 嘉宾的观点是否值得听"],["context","D. 音频是否适合当前场景或时间"],["interest","E. 内容是否符合自己的兴趣"],["other","F. 其他（访谈）"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">4</span><span>在收听播客前，你认为多大程度上需要了解播客的内容信息？</span></div>${radioChoices("informationNeed", [["blind","A. 完全不知道，开盲盒也可以"],["type","B. 至少知道是哪个类型的播客"],["topicGuest","C. 至少知道主题、嘉宾"],["summary","D. 至少知道以上信息，并看过内容简介"],["reviews","E. 知道以上所有信息，并查看评论区评价"],["transcript","F. 还会浏览转写文本"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">5</span><span>一般情况下，你需要听多久来决定继续收听还是退出？</span></div>${radioChoices("decisionTime", [["under1","A. 1 分钟内"],["oneToThree","B. 1—3 分钟"],["threeToTen","C. 3—10 分钟"],["tenToThirty","D. 10—30 分钟"],["overThirty","E. 30 分钟以上"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">6</span><span>如果听后发现一集播客不符合预期，你通常会怎么做？</span></div>${radioChoices("mismatchAction", [["exit","A. 立即退出"],["seek","B. 跳到其他时间位置继续尝试"],["speed","C. 加速收听"],["finish","D. 仍然继续听完"],["rare","E. 很少出现这种情况"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">7</span><span>有一期播客你非常喜欢，你是否试图回溯找到其中某一句言论或观点？</span></div>${radioChoices("refindFrequency", [["often","A. 经常"],["sometimes","B. 偶尔"],["rarely","C. 很少"],["never","D. 从未"]])}</section>
-      <section class="card question-card"><div class="question-title"><span class="question-number">8</span><span>听完一期播客后，你意犹未尽，你会选择什么样的播客继续收听？<small class="muted">（最多选 2 项）</small></span></div>${limitedCheckboxChoices("afterListening", [["nextShow","A. 同栏目的下一期播客"],["system","B. 系统推荐的下一期播客"],["similar","C. 主题类似的播客"],["stop","D. 不再继续听"]], 2, "afterListeningCount")}</section>
-      <div class="form-actions"><button class="button" type="submit">提交并继续</button></div>
+  const questionIndex = state.needsIndex || 0;
+  const question = TASK_ONE_QUESTIONS[questionIndex];
+  const selected = state.needsResponses?.[question.key];
+  const selectedValues = Array.isArray(selected) ? selected : selected ? [selected] : [];
+  const selectedOther = selectedValues.includes("other");
+  const otherField = question.otherKey ? `<div class="conditional-other-field" id="${question.otherKey}Field" ${selectedOther ? "" : "hidden"}>
+    <input class="text-input other-input" id="${question.otherKey}" name="${question.otherKey}" type="text" maxlength="150" value="${escapeHTML(state.needsResponses?.[question.otherKey] || "")}" placeholder="${question.otherPlaceholder}" aria-label="${question.otherPlaceholder}" ${selectedOther ? "required" : ""}>
+  </div>` : "";
+  const selectionHint = question.max ? `<small class="muted">（最多选 ${question.max} 项）</small>` : "";
+  return wrap(`${sectionHeader(`Level 1 · Task 1 · ${questionIndex + 1}/8`, "用户的需求", "请根据你平时使用播客平台的真实习惯作答。", `<span class="badge">第 ${questionIndex + 1} 题，共 8 题</span>`)}
+    <form id="needsQuestionForm" class="narrow task-one-form" data-question-number="${questionIndex + 1}">
+      <section class="card question-card">
+        <div class="question-title"><span class="question-number">${questionIndex + 1}</span><span>${question.title}${selectionHint}</span></div>
+        ${taskOneChoices(question, selected)}
+        ${otherField}
+      </section>
+      <div class="form-actions"><button class="button" type="submit">${questionIndex === TASK_ONE_QUESTIONS.length - 1 ? "完成 Task 1" : "下一题"}</button></div>
     </form>`);
 }
 
 function renderInfoRank() {
-  return wrap(`${sectionHeader("Level 2 · Task 2-A", "哪些信息更重要？", "请回想你发现一集感兴趣、但尚未收听的播客时的判断过程，把信息从重要到不重要排序。", `<span class="badge">拖动或使用箭头</span>`)}
-    <div class="card narrow">
-      <div class="rank-list" id="rankList">${state.infoRanking.map((name, index) => {
-        const description = INFORMATION_FIELDS.find(item => item[0] === name)?.[1] || "";
-        return `<div class="rank-item" draggable="true" data-rank-index="${index}">
-          <span class="rank-number">${index + 1}</span><span class="drag-mark" aria-hidden="true">⋮⋮</span>
-          <span class="rank-copy"><b>${name}</b><small>${description}</small></span>
-          <span class="rank-controls"><button class="icon-button" type="button" data-rank-move="up" data-index="${index}" aria-label="上移 ${name}" ${index === 0 ? "disabled" : ""}>↑</button><button class="icon-button" type="button" data-rank-move="down" data-index="${index}" aria-label="下移 ${name}" ${index === state.infoRanking.length - 1 ? "disabled" : ""}>↓</button></span>
-        </div>`;
-      }).join("")}</div>
-      <div class="form-actions"><button class="button" id="rankSubmit" type="button">完成排序</button></div>
-    </div>`);
+  const rankedIds = state.infoRanking || [];
+  const availableIds = state.infoRankingInitial.filter(id => !rankedIds.includes(id));
+  const fieldFor = id => RANKING_FIELDS.find(field => field.id === id);
+  const selectedId = state.rankingSelectedId;
+  const placementCount = selectedId ? rankedIds.length + (rankedIds.includes(selectedId) ? 0 : 1) : 0;
+  const pool = availableIds.length ? availableIds.map(id => {
+    const field = fieldFor(id);
+    return `<button class="ranking-chip ${selectedId === id ? "selected" : ""}" type="button" draggable="true" data-ranking-id="${id}" data-ranking-select="${id}" aria-pressed="${selectedId === id}">${field.label}</button>`;
+  }).join("") : `<p class="ranking-empty">所有信息都已放入排序轴，你仍可继续调整。</p>`;
+  const axisItems = rankedIds.length ? rankedIds.map((id, index) => {
+    const field = fieldFor(id);
+    return `<div class="ranking-axis-item ${selectedId === id ? "selected" : ""}" draggable="true" data-ranking-id="${id}" data-ranking-axis-index="${index}">
+      <span class="ranking-position">${index + 1}</span>
+      <button class="ranking-axis-label" type="button" data-ranking-select="${id}" aria-pressed="${selectedId === id}">${field.label}</button>
+      <button class="ranking-remove" type="button" data-ranking-remove="${id}" aria-label="将${field.label}移回待排序区域">×</button>
+    </div>`;
+  }).join("") : `<div class="ranking-axis-empty">将标签拖到这里，或点击上方标签后选择放置位置</div>`;
+  const placements = selectedId ? `<div class="ranking-placement-panel"><span>将“${fieldFor(selectedId).label}”放在：</span><div>${Array.from({ length: placementCount }, (_, index) => `<button type="button" data-ranking-place="${index}" aria-label="放在第 ${index + 1} 位">第 ${index + 1} 位</button>`).join("")}</div></div>` : "";
+  return wrap(`${sectionHeader("Task 2-A · 信息偏好", "哪些播客信息对你最有帮助？", "假设你发现了一集感兴趣、但还没有听过的播客。在决定是否收听之前，你认为哪些信息最能帮助你作出判断？请将以下9项信息拖入排序区域，按照从最有帮助到最没有帮助的顺序排列。", `<span class="badge">已排列 ${rankedIds.length}/9 项</span>`)}
+    <section class="card ranking-workspace">
+      <div class="ranking-pool" id="rankingPool" data-ranking-pool>
+        <div class="ranking-region-head"><h2>待排序的信息</h2><span>已排列 ${rankedIds.length}/9 项</span></div>
+        <div class="ranking-chip-box">${pool}</div>
+      </div>
+      <div class="ranking-guidance"><span>← 最有帮助</span><span>拖动标签进行排序，也可以点击标签选择位置。完成后仍可调整顺序。</span><span>最没有帮助 →</span></div>
+      <div class="ranking-axis" id="rankingAxis" data-ranking-axis aria-label="从最有帮助到最没有帮助的排序轴">${axisItems}</div>
+      ${placements}
+      <div class="ranking-footer"><b>已排列 ${rankedIds.length}/9 项</b><span>${rankedIds.length === RANKING_FIELDS.length ? "排序已完成，提交前仍可继续调整。" : "请将全部9项信息放入排序轴。"}</span></div>
+      <div class="form-actions"><button class="button" id="rankSubmit" type="button" ${rankedIds.length === RANKING_FIELDS.length ? "" : "disabled"}>完成排序并继续</button></div>
+    </section>`);
 }
 
 function fieldValue(episode, field) {
@@ -822,7 +976,10 @@ function renderScenario() {
     </section>
     <form id="scenarioForm" class="card narrow">
       <label class="field-label" for="scenarioEpisode">你最终选择了哪一期？</label>
-      <select id="scenarioEpisode" name="episode" required><option value="">请选择</option>${EPISODES.map(episode => `<option value="${episode.id}">${episode.id} 鲁豫对话${episode.guest}｜${episode.title}</option>`).join("")}<option value="other">其他／未在列表中</option></select>
+      <select id="scenarioEpisode" name="episode" required><option value="">请选择</option>${EPISODES.map(episode => `<option value="${episode.id}">${episode.id} 鲁豫对话${episode.guest}｜${episode.title}</option>`).join("")}<option value="other">其他</option></select>
+      <div class="conditional-other-field" id="scenarioEpisodeOtherField" hidden>
+        <input class="text-input other-input" id="scenarioEpisodeOther" name="episodeOther" type="text" maxlength="150" placeholder="请填写所选播客" aria-label="请填写所选播客">
+      </div>
       <div class="interview-callout"><b>（访谈）</b>请口头描述你寻找这期节目的过程，以及过程中查看了哪些信息。</div>
       <div class="form-actions"><button class="button" type="submit">完成研究</button></div>
     </form>`);
@@ -1016,11 +1173,13 @@ const RENDERERS = {
 function updateHeader() {
   let index = STEPS.indexOf(state.step);
   let fraction = 0;
+  if (state.step === "needs") fraction = state.needsIndex / TASK_ONE_QUESTIONS.length;
   if (state.step === "contentTrial") fraction = state.contentIndex / CONTENT_TRIALS.length;
   if (state.step === "structureTrial") fraction = state.structureIndex / state.structureComparisons.length;
   const progress = ((index + fraction + 1) / STEPS.length) * 100;
   document.querySelector("#progressBar").style.width = `${Math.min(100, progress)}%`;
   let label = STEP_LABELS[state.step] || "";
+  if (state.step === "needs") label += ` ${state.needsIndex + 1}/8`;
   if (state.step === "contentTrial") label += ` ${state.contentIndex + 1}/5`;
   if (state.step === "structureTrial") label += ` ${state.structureIndex + 1}/12`;
   document.querySelector("#stepLabel").textContent = label;
@@ -1049,44 +1208,92 @@ function collectForm(form) {
   return Object.fromEntries(formData.entries());
 }
 
-function validateScale(ids) {
+function validateScale(ids, questionNumber = "本题评价") {
   const missing = ids.find(id => !document.querySelector(`#${CSS.escape(id)}`)?.value);
   if (missing) {
-    toast("请完成所有量表评价");
-    document.querySelector(`#${CSS.escape(missing)}`)?.closest(".scale-block")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    showIncompleteQuestion(questionNumber, "请完成评价", document.querySelector(`#${CSS.escape(missing)}`)?.closest(".scale-block"));
     return false;
   }
   return true;
 }
 
-function bindRankDrag() {
-  let draggedIndex = null;
-  document.querySelectorAll(".rank-item").forEach(item => {
-    item.addEventListener("dragstart", () => { draggedIndex = Number(item.dataset.rankIndex); item.classList.add("dragging"); });
-    item.addEventListener("dragend", () => { item.classList.remove("dragging"); document.querySelectorAll(".rank-item").forEach(row => row.classList.remove("drag-over")); });
-    item.addEventListener("dragover", event => { event.preventDefault(); item.classList.add("drag-over"); });
-    item.addEventListener("dragleave", () => item.classList.remove("drag-over"));
-    item.addEventListener("drop", event => {
-      event.preventDefault();
-      const targetIndex = Number(item.dataset.rankIndex);
-      if (draggedIndex === null || draggedIndex === targetIndex) return;
-      const [moved] = state.infoRanking.splice(draggedIndex, 1);
-      state.infoRanking.splice(targetIndex, 0, moved);
-      log("rank_drag", moved, { from: draggedIndex, to: targetIndex });
-      save();
-      render();
-    });
-  });
-}
-
-function moveRank(index, direction) {
-  const target = direction === "up" ? index - 1 : index + 1;
-  if (target < 0 || target >= state.infoRanking.length) return;
-  const [moved] = state.infoRanking.splice(index, 1);
-  state.infoRanking.splice(target, 0, moved);
-  log("rank_button", moved, { from: index, to: target });
+function placeRankingItem(id, requestedIndex, interaction = "click", finalIndex = false) {
+  if (!RANKING_FIELDS.some(field => field.id === id)) return;
+  const from = state.infoRanking.indexOf(id);
+  if (from >= 0) state.infoRanking.splice(from, 1);
+  let target = Math.max(0, Math.min(Number(requestedIndex), state.infoRanking.length));
+  if (!finalIndex && from >= 0 && from < target) target -= 1;
+  state.infoRanking.splice(target, 0, id);
+  state.rankingSelectedId = "";
+  log(from >= 0 ? "ranking_move" : "ranking_add", id, { from, to: target, interaction });
   save();
   render();
+}
+
+function removeRankingItem(id, interaction = "click") {
+  const from = state.infoRanking.indexOf(id);
+  if (from < 0) return;
+  state.infoRanking.splice(from, 1);
+  state.rankingSelectedId = "";
+  log("ranking_remove", id, { from, interaction });
+  save();
+  render();
+}
+
+function bindRankingInteractions() {
+  let draggedId = "";
+  const clearFeedback = () => {
+    document.querySelectorAll(".ranking-axis-item, .ranking-axis, .ranking-pool").forEach(element => element.classList.remove("drop-before", "drop-after", "drag-active"));
+  };
+  document.querySelectorAll("[data-ranking-id]").forEach(item => {
+    item.addEventListener("dragstart", event => {
+      draggedId = item.dataset.rankingId;
+      item.classList.add("dragging");
+      event.dataTransfer?.setData("text/plain", draggedId);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+      log("ranking_drag_start", draggedId, { from: state.infoRanking.indexOf(draggedId) });
+    });
+    item.addEventListener("dragend", () => {
+      item.classList.remove("dragging");
+      clearFeedback();
+    });
+  });
+  document.querySelectorAll("[data-ranking-axis-index]").forEach(item => {
+    item.addEventListener("dragover", event => {
+      event.preventDefault();
+      clearFeedback();
+      const rect = item.getBoundingClientRect();
+      item.classList.add(event.clientX < rect.left + rect.width / 2 ? "drop-before" : "drop-after");
+    });
+    item.addEventListener("drop", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = draggedId || event.dataTransfer?.getData("text/plain");
+      const rect = item.getBoundingClientRect();
+      const target = Number(item.dataset.rankingAxisIndex) + (event.clientX >= rect.left + rect.width / 2 ? 1 : 0);
+      clearFeedback();
+      placeRankingItem(id, target, "drag");
+    });
+  });
+  const axis = document.querySelector("[data-ranking-axis]");
+  axis?.addEventListener("dragover", event => { event.preventDefault(); axis.classList.add("drag-active"); });
+  axis?.addEventListener("dragleave", event => { if (!axis.contains(event.relatedTarget)) axis.classList.remove("drag-active"); });
+  axis?.addEventListener("drop", event => {
+    if (event.target.closest("[data-ranking-axis-index]")) return;
+    event.preventDefault();
+    const id = draggedId || event.dataTransfer?.getData("text/plain");
+    clearFeedback();
+    placeRankingItem(id, state.infoRanking.length, "drag");
+  });
+  const pool = document.querySelector("[data-ranking-pool]");
+  pool?.addEventListener("dragover", event => { event.preventDefault(); pool.classList.add("drag-active"); });
+  pool?.addEventListener("dragleave", event => { if (!pool.contains(event.relatedTarget)) pool.classList.remove("drag-active"); });
+  pool?.addEventListener("drop", event => {
+    event.preventDefault();
+    const id = draggedId || event.dataTransfer?.getData("text/plain");
+    clearFeedback();
+    removeRankingItem(id, "drag");
+  });
 }
 
 function startClip() {
@@ -1119,7 +1326,7 @@ function runCountdown() {
 }
 
 function bindCurrentView() {
-  if (state.step === "infoRank") bindRankDrag();
+  if (state.step === "infoRank") bindRankingInteractions();
 }
 
 function renderResearcher() {
@@ -1167,16 +1374,16 @@ function answerRows() {
   add("P1-02", "Pre-interview", "gender", profile.gender, profile.durationMs);
   add("P1-03", "Pre-interview", "age", profile.age, profile.durationMs);
   add("P1-04", "Pre-interview", "listening_frequency", profile.listeningFrequency, profile.durationMs);
-  add("P1-05", "Pre-interview", "platforms", profile.platforms, profile.durationMs);
-  add("P1-06", "Pre-interview", "podcast_types", profile.podcastTypes, profile.durationMs);
+  add("P1-05", "Pre-interview", "platforms", profile.platforms, profile.durationMs, { other: profile.platformOther || "" });
+  add("P1-06", "Pre-interview", "podcast_types", profile.podcastTypes, profile.durationMs, { other: profile.podcastTypeOther || "" });
   add("P1-06.5", "Pre-interview", "listening_scenes", profile.listeningScenes, profile.durationMs);
   add("P1-08", "Pre-interview", "creation_experience", profile.creationExperience, profile.durationMs);
   add("P1-09", "Pre-interview", "show_familiarity", profile.showFamiliarity, profile.durationMs);
 
   const needs = state.answers.needs || {};
   add("T1-01", "Task 1", "listening_preference", needs.listeningPreference, needs.durationMs);
-  add("T1-02", "Task 1", "discovery_start", needs.discoveryStart, needs.durationMs);
-  add("T1-03", "Task 1", "most_wanted_information", needs.mostWantedInfo, needs.durationMs);
+  add("T1-02", "Task 1", "discovery_start", needs.discoveryStart, needs.durationMs, { other: needs.discoveryStartOther || "" });
+  add("T1-03", "Task 1", "most_wanted_information", needs.mostWantedInfo, needs.durationMs, { other: needs.mostWantedInfoOther || "" });
   add("T1-07", "Task 1", "information_need", needs.informationNeed, needs.durationMs);
   add("T1-03-duration", "Task 1", "decision_time", needs.decisionTime, needs.durationMs, { sourceQuestionId: "T1-03", note: "源表中编号重复，导出时添加 duration 后缀" });
   add("T1-04", "Task 1", "mismatch_action", needs.mismatchAction, needs.durationMs);
@@ -1184,9 +1391,34 @@ function answerRows() {
   add("T1-06", "Task 1", "after_listening", needs.afterListening, needs.durationMs);
 
   const ranking = state.answers.infoRanking || {};
-  add("T2-E01", "Task 2", "information_ranking", ranking.order, ranking.durationMs);
+  add("T2-E01", "Task 2", "information_ranking", ranking.order, ranking.durationMs, {
+    rankingSchemaVersion: 2,
+    initialOrder: ranking.initialOrder || [],
+    completedAt: ranking.completedAt || "",
+    labels: ranking.orderLabels || []
+  });
+  if (isCompleteRankingIdSet(ranking.order)) {
+    ranking.order.forEach((fieldId, index) => {
+      const field = RANKING_FIELDS.find(item => item.id === fieldId);
+      add(`T2-E01-${fieldId}`, "Task 2", "information_rank", index + 1, ranking.durationMs, {
+        fieldId,
+        label: field?.label || fieldId,
+        initialPosition: (ranking.initialOrder || []).indexOf(fieldId) + 1
+      });
+    });
+  }
+  const legacyRanking = state.answers.infoRankingLegacy;
+  if (legacyRanking?.order?.length) {
+    add("T2-E01-legacy", "Task 2", "legacy_information_ranking", legacyRanking.order, legacyRanking.durationMs, {
+      preservedDuringTask2ARedesign: true,
+      originalStudyVersion: STUDY_VERSION
+    });
+  }
   const reveal = state.answers.infoReveal || {};
-  add("T2-E02", "Task 2", "selected_episode", reveal.episode, reveal.durationMs, { selectedFields: reveal.fields || [] });
+  add("T2-E02", "Task 2", "selected_episode", reveal.episode, reveal.durationMs, {
+    selectedFields: reveal.fields || [],
+    selectedFieldIds: reveal.fieldIds || (reveal.fields || []).map(label => INFORMATION_FIELD_IDS[label]).filter(Boolean)
+  });
   Object.entries(state.answers.contentTrials || {}).forEach(([index, trial]) => add(`T2-C0${Number(index) + 1}`, "Task 2", "helpfulness_1_to_7", trial.help, trial.elapsedMs, {
     feature: trial.feature,
     featureOpened: trial.featureOpened,
@@ -1211,7 +1443,7 @@ function answerRows() {
   const interview = state.answers.interview || {};
   add("T4-01", "Task 4", "oral_interview_completed", interview.completed, interview.durationMs);
   const scenario = state.answers.scenario || {};
-  add("T4-02", "Task 4", "selected_episode", scenario.episode, scenario.durationMs, { responseMode: "task_and_oral_interview" });
+  add("T4-02", "Task 4", "selected_episode", scenario.episode, scenario.durationMs, { responseMode: "task_and_oral_interview", other: scenario.episodeOther || "" });
   return rows;
 }
 
@@ -1295,14 +1527,41 @@ document.addEventListener("click", event => {
   if (scaleButton) setScale(scaleButton.dataset.scaleTarget, scaleButton.dataset.scaleValue);
 
   if (event.target.id === "introNext") goTo("profile");
+  const rankingSelect = event.target.closest("[data-ranking-select]");
+  if (rankingSelect) {
+    const id = rankingSelect.dataset.rankingSelect;
+    state.rankingSelectedId = state.rankingSelectedId === id ? "" : id;
+    log("ranking_select", id, { selected: state.rankingSelectedId === id, currentPosition: state.infoRanking.indexOf(id) });
+    save();
+    render();
+    return;
+  }
+  const rankingRemove = event.target.closest("[data-ranking-remove]");
+  if (rankingRemove) {
+    removeRankingItem(rankingRemove.dataset.rankingRemove, "click");
+    return;
+  }
+  const rankingPlace = event.target.closest("[data-ranking-place]");
+  if (rankingPlace && state.rankingSelectedId) {
+    placeRankingItem(state.rankingSelectedId, Number(rankingPlace.dataset.rankingPlace), "click", true);
+    return;
+  }
   if (event.target.id === "rankSubmit") {
-    state.answers.infoRanking = { order: [...state.infoRanking], durationMs: pageDuration() };
+    if (!isCompleteRankingIdSet(state.infoRanking)) return showIncompleteQuestion("排序任务", "请先排列全部9项信息", document.querySelector("#rankingAxis"));
+    const completedAt = new Date().toISOString();
+    state.answers.infoRanking = {
+      order: [...state.infoRanking],
+      orderLabels: state.infoRanking.map(id => RANKING_FIELDS.find(field => field.id === id)?.label || id),
+      ranks: state.infoRanking.map((id, index) => ({ fieldId: id, rank: index + 1 })),
+      initialOrder: [...state.infoRankingInitial],
+      initialOrderLabels: state.infoRankingInitial.map(id => RANKING_FIELDS.find(field => field.id === id)?.label || id),
+      durationMs: pageDuration(),
+      completedAt
+    };
     log("info_ranking_complete", "", state.answers.infoRanking);
     save();
     goTo("infoReveal");
   }
-  const rankMove = event.target.closest("[data-rank-move]");
-  if (rankMove) moveRank(Number(rankMove.dataset.index), rankMove.dataset.rankMove);
 
   const fieldButton = event.target.closest("[data-field-choice]");
   if (fieldButton) {
@@ -1380,6 +1639,20 @@ window.addEventListener("pagehide", () => {
   }).catch(() => {});
 });
 
+document.addEventListener("invalid", event => {
+  event.preventDefault();
+  if (invalidNoticeActive) return;
+  invalidNoticeActive = true;
+  window.setTimeout(() => { invalidNoticeActive = false; }, 400);
+  const card = event.target.closest?.(".question-card");
+  const pair = event.target.closest?.(".pair-question");
+  const form = event.target.closest?.("form");
+  const cardNumber = card?.querySelector?.(".question-number")?.textContent?.trim();
+  const pairNumber = pair?.querySelector?.("h3")?.textContent?.match(/Q(\d+)/)?.[1];
+  const questionNumber = cardNumber || pairNumber || form?.dataset?.questionNumber || "本页问题";
+  showIncompleteQuestion(questionNumber, "请选择或填写答案", event.target);
+}, true);
+
 document.addEventListener("change", event => {
   if (event.target.id === "consentCheck") document.querySelector("#introNext").disabled = !event.target.checked;
   if (event.target.matches("[data-choice-limit]")) {
@@ -1389,11 +1662,33 @@ document.addEventListener("change", event => {
     const checked = [...document.querySelectorAll(selector)];
     if (checked.length > limit) {
       event.target.checked = false;
-      toast(`最多选择 ${limit} 项`);
+      const questionNumber = event.target.closest(".question-card")?.querySelector(".question-number")?.textContent?.trim();
+      if (questionNumber) showIncompleteQuestion(questionNumber, `最多选择 ${limit} 项`, event.target);
+      else toast(`最多选择 ${limit} 项`);
     }
     const count = document.querySelectorAll(selector).length;
     const counter = document.querySelector(`#${CSS.escape(event.target.dataset.counterId)}`);
     if (counter) counter.textContent = `已选 ${count}/${limit}`;
+  }
+  const otherFieldMap = {
+    platforms: ["platformOtherField", "platformOther"],
+    podcastTypes: ["podcastTypeOtherField", "podcastTypeOther"],
+    discoveryStart: ["discoveryStartOtherField", "discoveryStartOther"],
+    mostWantedInfo: ["mostWantedInfoOtherField", "mostWantedInfoOther"],
+    episode: ["scenarioEpisodeOtherField", "scenarioEpisodeOther"]
+  };
+  const otherField = otherFieldMap[event.target.name];
+  if (otherField) {
+    const container = document.querySelector(`#${CSS.escape(otherField[0])}`);
+    const input = document.querySelector(`#${CSS.escape(otherField[1])}`);
+    if (container && input) {
+      const otherOption = document.querySelector(`[name="${CSS.escape(event.target.name)}"][value="other"]`);
+      const selectedOther = event.target.tagName === "SELECT" ? event.target.value === "other" : Boolean(otherOption?.checked);
+      container.hidden = !selectedOther;
+      input.required = selectedOther;
+      if (!selectedOther) input.value = "";
+      if (selectedOther) input.focus();
+    }
   }
 });
 
@@ -1404,18 +1699,24 @@ document.addEventListener("submit", event => {
     const platforms = formData.getAll("platforms");
     const podcastTypes = formData.getAll("podcastTypes");
     const listeningScenes = formData.getAll("listeningScenes");
-    if (!platforms.length) return toast("请至少选择一个常用播客平台");
-    if (!podcastTypes.length) return toast("请至少选择一种常听的播客类型");
-    if (podcastTypes.length > 3) return toast("常听的播客类型最多选择 3 项");
-    if (!listeningScenes.length) return toast("请至少选择一个收听播客的场景");
-    if (listeningScenes.length > 3) return toast("收听场景最多选择 3 项");
+    if (!platforms.length) return showIncompleteQuestion(4, "请至少选择一个常用播客平台", event.target.querySelector("input[name='platforms']"));
+    if (!podcastTypes.length) return showIncompleteQuestion(5, "请至少选择一种常听的播客类型", event.target.querySelector("input[name='podcastTypes']"));
+    if (podcastTypes.length > 3) return showIncompleteQuestion(5, "最多选择 3 项", event.target.querySelector("input[name='podcastTypes']"));
+    const platformOther = String(formData.get("platformOther") || "").trim();
+    const podcastTypeOther = String(formData.get("podcastTypeOther") || "").trim();
+    if (platforms.includes("other") && !platformOther) return showIncompleteQuestion(4, "请填写其他播客平台", event.target.querySelector("#platformOther"));
+    if (podcastTypes.includes("other") && !podcastTypeOther) return showIncompleteQuestion(5, "请填写其他播客类型", event.target.querySelector("#podcastTypeOther"));
+    if (!listeningScenes.length) return showIncompleteQuestion(6, "请至少选择一个收听场景", event.target.querySelector("input[name='listeningScenes']"));
+    if (listeningScenes.length > 3) return showIncompleteQuestion(6, "最多选择 3 项", event.target.querySelector("input[name='listeningScenes']"));
     state.answers.profile = {
       participantId: state.participantId,
       gender: formData.get("gender"),
       age: Number(formData.get("age")),
       listeningFrequency: formData.get("listeningFrequency"),
       platforms,
+      platformOther,
       podcastTypes,
+      podcastTypeOther,
       listeningScenes,
       creationExperience: formData.get("creationExperience"),
       showFamiliarity: formData.get("showFamiliarity"),
@@ -1423,27 +1724,52 @@ document.addEventListener("submit", event => {
     };
     log("profile_complete", "", state.answers.profile);
     save();
+    state.needsIndex = 0;
     goTo("needs");
   }
 
-  if (event.target.id === "needsForm") {
+  if (event.target.id === "needsQuestionForm") {
     event.preventDefault();
-    const afterListening = [...event.target.querySelectorAll("input[name='afterListening']:checked")].map(input => input.value);
-    if (!afterListening.length) return toast("请至少选择一种继续收听的方式");
-    if (afterListening.length > 2) return toast("继续收听的方式最多选择 2 项");
-    const data = collectForm(event.target);
-    state.answers.needs = { ...data, afterListening, durationMs: pageDuration() };
-    log("needs_complete", "", state.answers.needs);
+    const questionIndex = state.needsIndex || 0;
+    const question = TASK_ONE_QUESTIONS[questionIndex];
+    const formData = new FormData(event.target);
+    const response = question.type === "checkbox" ? formData.getAll(question.key) : formData.get(question.key);
+    const responseCount = Array.isArray(response) ? response.length : response ? 1 : 0;
+    if (!responseCount) return showIncompleteQuestion(questionIndex + 1, "请选择至少一个选项", event.target);
+    if (question.max && responseCount > question.max) return showIncompleteQuestion(questionIndex + 1, `最多选择 ${question.max} 项`, event.target);
+    const otherValue = question.otherKey ? String(formData.get(question.otherKey) || "").trim() : "";
+    const includesOther = Array.isArray(response) ? response.includes("other") : response === "other";
+    if (includesOther && !otherValue) return showIncompleteQuestion(questionIndex + 1, "请填写“其他”的具体内容", event.target.querySelector(".conditional-other-field"));
+    state.needsResponses[question.key] = response;
+    if (question.otherKey) state.needsResponses[question.otherKey] = otherValue;
+    state.needsQuestionDurations[questionIndex] = pageDuration();
+    log("needs_question_complete", question.key, { questionNumber: questionIndex + 1, response, other: otherValue });
     save();
-    goTo("infoRank");
+    if (questionIndex < TASK_ONE_QUESTIONS.length - 1) {
+      state.needsIndex += 1;
+      state.pageEnteredAt = Date.now();
+      save();
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      state.answers.needs = {
+        ...state.needsResponses,
+        durationMs: Object.values(state.needsQuestionDurations).reduce((total, value) => total + Number(value || 0), 0)
+      };
+      log("needs_complete", "", state.answers.needs);
+      save();
+      goTo("infoRank");
+    }
   }
 
   if (event.target.id === "revealForm") {
     event.preventDefault();
-    if (!state.selectedFields.length) return toast("请至少选择一类信息");
-    if (!state.selectedEpisode) return toast("请选择一集想听的节目");
+    if (!state.selectedFields.length) return showIncompleteQuestion("第一步", "请至少选择一类信息", event.target.previousElementSibling?.previousElementSibling);
+    if (!state.selectedEpisode) return showIncompleteQuestion("第二步", "请选择一集想听的节目", event.target.previousElementSibling);
     state.answers.infoReveal = {
-      fields: [...state.selectedFields], episode: state.selectedEpisode,
+      fields: [...state.selectedFields],
+      fieldIds: state.selectedFields.map(label => INFORMATION_FIELD_IDS[label]).filter(Boolean),
+      episode: state.selectedEpisode,
       durationMs: pageDuration()
     };
     log("info_reveal_complete", state.selectedEpisode, state.answers.infoReveal);
@@ -1454,7 +1780,9 @@ document.addEventListener("submit", event => {
   if (event.target.id === "scenarioForm") {
     event.preventDefault();
     const data = collectForm(event.target);
-    state.answers.scenario = { episode: data.episode, durationMs: pageDuration() };
+    data.episodeOther = String(data.episodeOther || "").trim();
+    if (data.episode === "other" && !data.episodeOther) return showIncompleteQuestion("本页问题", "请填写所选播客", event.target.querySelector("#scenarioEpisodeOther"));
+    state.answers.scenario = { episode: data.episode, episodeOther: data.episodeOther, durationMs: pageDuration() };
     log("scenario_complete", data.episode, state.answers.scenario);
     save();
     goTo("complete");
@@ -1462,8 +1790,8 @@ document.addEventListener("submit", event => {
 
   if (event.target.id === "contentRatingForm") {
     event.preventDefault();
-    if (!state.contentStarts[state.contentIndex]) return toast("请先开始试听计时");
-    if (!validateScale(["contentHelp"])) return;
+    if (!state.contentStarts[state.contentIndex]) return showIncompleteQuestion(state.contentIndex + 1, "请先开始试听计时", document.querySelector(".audio-panel"));
+    if (!validateScale(["contentHelp"], state.contentIndex + 1)) return;
     const data = collectForm(event.target);
     state.answers.contentTrials ||= {};
     const trial = CONTENT_TRIALS[state.contentIndex];

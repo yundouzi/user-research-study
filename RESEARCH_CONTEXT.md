@@ -46,7 +46,7 @@ Eight structured items record:
 
 ### T2-E01: direct ranking
 
-Participants rank 13 information types: title, host, duration, topic tags, summary, comment overview, play count, similar podcasts, transcript, topic timeline, timestamped comments, sentiment analysis, and audio-analysis features.
+Participants rank nine episode-level information types: podcast title, hosts and guests, duration, topic tags, description, comments, play count, similar-podcast recommendations, and transcript. All nine items must be placed in a complete 1–9 order. Initial chip order is randomized per participant and recorded. Task 2-B currently retains its existing 13 progressive-disclosure options; the nine semantically corresponding options share stable field IDs with Task 2-A.
 
 ### T2-E02: progressive disclosure
 
@@ -78,7 +78,7 @@ Participants then open Xiaoyuzhou and find a Lu Yu-hosted episode in 《岩中�
 | --- | --- |
 | Profile | ID, gender, age, frequency, platforms, podcast types, listening scenarios, creation experience, familiarity |
 | Listener needs | Listening preference, discovery start, wanted information, pre-listening information need, decision time, mismatch action, revisit frequency, continued-listening choices |
-| Information ranking | Full order of 13 fields, interaction changes, duration |
+| Information ranking | Full order of 9 fields, one explicit rank per stable field ID, initial order, interaction changes, completion time and duration |
 | Progressive disclosure | Revealed fields, reveal sequence, selected episode, duration |
 | Within-episode assistance | Feature, perceived helpfulness 1–7, feature opened, elapsed time, audio status |
 | Structure comparison | Pair ID, A/B structures and counts, visual choice, understanding choice, agreement, duration |
