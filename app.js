@@ -354,7 +354,10 @@ const CONTENT_TRIALS = [
     q1: { text: "鸟鸟小时候独自在家时，为什么需要寻找备用钥匙？", options: [["A","她想打开父母的卧室"],["B","父母把厕所门锁上，避免她接近厨房"],["C","她把家门钥匙弄丢了"],["D","她想去楼下买雪糕"]], correct: "B" },
     q2: { text: "这段经历的叙述顺序是什么？", options: [["A","偷吃雪糕—父母回家—找到钥匙—厕所被锁"],["B","父母回家—厕所被锁—独自在家—买雪糕"],["C","独自在家的风险—厕所被锁—找到备用钥匙—偷吃雪糕忘关冰箱"],["D","找到钥匙—去学校—独自在家—父母回家"]], correct: "C" },
     content: () => `
-      <div class="topic-timeline"><div class="topic-segment" style="flex:21;background:#667f99">独自在家的风险<br>00:00–00:21</div><div class="topic-segment" style="flex:18;background:#d99056">寻找备用钥匙<br>00:21–00:39</div><div class="topic-segment" style="flex:20;background:#825d82">偷吃雪糕与冰箱<br>00:39–00:59</div></div>`
+      <div class="keyword-timeline" aria-label="一分钟内容关键词索引">
+        ${keywordMarkerHTML(0, 59, "独自在家的风险")}${keywordMarkerHTML(11, 59, "厨房与厕所")}${keywordMarkerHTML(20, 59, "厕所门被锁")}${keywordMarkerHTML(26, 59, "寻找备用钥匙")}${keywordMarkerHTML(52, 59, "偷吃雪糕")}
+        <div class="timeline-line"></div><span class="timeline-start">00:00</span><span class="timeline-end">00:59</span>
+      </div>`
   },
   {
     id: "T2-D02", featureType: "transcript", feature: "转写文本", startSec: 1445, endSec: 1503,
@@ -362,18 +365,28 @@ const CONTENT_TRIALS = [
     q1: { text: "鸟鸟为什么说自己在大学里感到不快乐和孤独？", options: [["A","她不喜欢学校所在的城市"],["B","她没有参加任何社团"],["C","她觉得课程太简单"],["D","她关心文学和社会议题，但身边同学很少与她交流这些内容"]], correct: "D" },
     q2: { text: "鸟鸟提到，部分理工科学生相信什么？", options: [["A","读万卷书不如行万里路"],["B","学好数理化，走遍天下都不怕"],["C","兴趣是最好的老师"],["D","实践比理论更重要"]], correct: "B" },
     content: () => `
-      <div class="transcript-line"><time>00:00</time><span><b>鸟鸟：</b>我在大学里边非常不快乐……从初中开始看《读者》《格言》，高中看文学杂志，大学开始看时事类的杂志。</span></div>
-      <div class="transcript-line"><time>00:17</time><span><b>鸟鸟：</b>我跟同学都没有办法交流这些东西，因为他们都不关心，我就觉得很孤独。</span></div>
-      <div class="transcript-line"><time>00:31</time><span><b>鸟鸟：</b>有一些理工科学生会觉得“学好数理化，走遍天下都不怕”，也不太反思这些东西。</span></div>
-      <div class="transcript-line"><time>00:49</time><span><b>鸟鸟：</b>但我很关心别人是怎么活着的，还有哪些问题没有解决。</span></div>`
+      <div class="transcript-line"><button class="transcript-time" type="button" data-audio-offset="0">00:00</button><span><b>鲁豫：</b>那这个专业你大学四年学得开心吗？</span></div>
+      <div class="transcript-line"><button class="transcript-time" type="button" data-audio-offset="3">00:03</button><span><b>鸟鸟：</b>不开心，因为我从初中开始看杂志。</span></div>
+      <div class="transcript-line"><button class="transcript-time" type="button" data-audio-offset="6">00:06</button><span><b>鸟鸟：</b>然后初中可能看《读者》《格言》这种碎片性比较强的文摘，高中看的是文学类一点的杂志。</span></div>
+      <div class="transcript-line"><button class="transcript-time" type="button" data-audio-offset="16">00:16</button><span><b>鸟鸟：</b>然后我上大学开始看时评类的，就《凤凰周刊》这种，我就很关心这些事情。</span></div>
+      <div class="transcript-line"><button class="transcript-time" type="button" data-audio-offset="23">00:23</button><span><b>鸟鸟：</b>但是我身边没有同学关心这些事情，所以我就经常处于一种挺孤独的状态。</span></div>
+      <div class="transcript-line"><button class="transcript-time" type="button" data-audio-offset="30">00:30</button><span><b>鸟鸟：</b>我觉得有时候大家学理工科的学生，我所看到的经常会因为太相信“学好数理化，走遍天下都不怕”，以至于对既有的系统缺乏反思。</span></div>
+      <div class="transcript-line"><button class="transcript-time" type="button" data-audio-offset="44">00:44</button><span><b>鸟鸟：</b>然后觉得只要自己能混得好，别的都不重要。但我很关注其他人是怎么生活的、遇到什么事情，这社会还有什么没解决的事情。</span></div>`
   },
   {
-    id: "T2-D03", featureType: "timestamp_comment", feature: "时间戳评论", startSec: 3790, endSec: 3860, materialReady: false,
+    id: "T2-D03", featureType: "timestamp_comment", feature: "时间戳评论", startSec: 3790, endSec: 3860,
     prompt: "请完整收听音频，然后回答三道题。",
     q1: { text: "为什么前辈女性脱口秀演员对鸟鸟很重要？", options: [["A","她们替鸟鸟修改了全部段子"],["B","她们在舞台上的掌控力让鸟鸟能够想象自己也可以做到"],["C","她们邀请鸟鸟加入相声社团"],["D","她们帮助鸟鸟找到电视台工作"]], correct: "B" },
     q2: { text: "鸟鸟说自己在开始练习一件事之前，通常需要什么？", options: [["A","先获得正式证书"],["B","先得到家人的许可"],["C","先准备完整商业计划"],["D","先看到别人成功完成过这件事"]], correct: "D" },
     content: () => `
-      <div class="material-warning"><b>研究材料待补充</b><p>现有已核实评论中没有与 63:10–64:20 对应的时间戳评论。为避免编造正式材料，此处暂不展示评论；请在正式测试前导入经核实的评论。</p></div>`
+      <div class="comment-timeline" aria-label="时间戳评论索引"><div class="timeline-line"></div>${[14,28,42,47,61].map(offset => `<button type="button" class="comment-dot" data-audio-offset="${offset}" style="left:${(offset / 70) * 100}%" aria-label="跳转到 ${formatOffset(offset)}"></button>`).join("")}<span class="timeline-start">1:03:10</span><span class="timeline-end">1:04:20</span></div>
+      <div class="timestamp-comments">
+        ${timestampCommentHTML("柚子哥", "1:03:24", 14, "脑海中蹦出六个字，真的吗，我不信。从第一分钟就大大疑惑于这位嘉宾有气无力的音量和每句尾向下的音调，真的是脱口秀演员吗。")}
+        ${timestampCommentHTML("HD724814z", "1:03:38", 28, "这里好感动，所以女孩子才应该去往各行各业，你们只要在那里，就足以给后来的女孩子勇气。")}
+        ${timestampCommentHTML("拉链的开口", "1:03:52", 42, "女性榜样留在牌桌上的重要性！")}
+        ${timestampCommentHTML("刘亦菲月子版", "1:03:57", 47, "我现在感觉到这个社会没有什么东西是真正重要的。只有你爱他，你才会觉得他重要，脱口秀也是这么一件事情。")}
+        ${timestampCommentHTML("Goya_CIHA", "1:04:11", 61, "因为没有相声女演员，所以没有办法去带入她们。很多时候身为女性，在一些男性主导的领域上也有一种局外人的感觉。很感谢各行各业里发光发热的女性前辈们。")}
+      </div>`
   },
   {
     id: "T2-D04", featureType: "sentiment_analysis", feature: "情感分析", startSec: 4514, endSec: 4572,
@@ -381,25 +394,70 @@ const CONTENT_TRIALS = [
     q1: { text: "鸟鸟在这段中如何看待“魅力”？", options: [["A","只有有魅力的人才值得被喜欢"],["B","魅力完全由外貌决定"],["C","没有魅力的人也值得拥有好的生活体验"],["D","魅力只能通过表演训练获得"]], correct: "C" },
     q2: { text: "这段对话的情感走向更接近哪一种？", options: [["A","从中性提问转向积极肯定，最后回到反思"],["B","从愤怒持续转向更强烈的愤怒"],["C","始终是悲伤和否定"],["D","完全没有情绪变化"]], correct: "A" },
     content: () => `
-      <div class="sentiment-chart" aria-label="情感强度随时间变化">
-        ${[18,32,57,50,68,38].map((height,index) => `<div class="sentiment-bar" style="height:${height}%"><span>${[0,9,25,40,49,54][index]}s</span></div>`).join("")}
-      </div>
-      <p class="helper" style="margin-top:38px">柱形越高表示积极情绪越明显。该结果来自逐句情感分析，用于观察方向变化，不代表对说话者心理状态的诊断。</p>`
+      ${sentimentChartHTML([[0,0.0],[9,0.6],[25,0.5],[40,0.7],[49,0.5],[54,0.2]], 58)}
+      <p class="helper">每个柱代表一句话的真实逐句情感分值；本片段没有负向句。该结果用于观察表达方向，不代表心理状态诊断。</p>`
   },
   {
     id: "T2-D05", featureType: "audio_features", feature: "音频分析特征", startSec: 2304, endSec: 2366,
     prompt: "请完整收听音频，然后回答三道题。",
     q1: { text: "鸟鸟对创作的看法发生了什么变化？", options: [["A","她认为只有成熟作家才应发表作品"],["B","她开始认为青涩作品和不完整片段也可能有价值"],["C","她不再阅读卡夫卡"],["D","她认为创作必须带来痛苦"]], correct: "B" },
     q2: { text: "在这段音频中，谁的发言时长占比更高？", options: [["A","鲁豫，约占四分之三"],["B","两人完全相同"],["C","鸟鸟，约占四分之三"],["D","无法听出任何说话人切换"]], correct: "C" },
-    content: () => `
-      <div class="feature-metrics">
-        <div class="metric"><span>平均语速</span><b>291</b><small>字／分钟</small></div>
-        <div class="metric"><span>平均停顿</span><b>0.21</b><small>秒</small></div>
-        <div class="metric"><span>鸟鸟占比</span><b>75%</b><small>发言时长</small></div>
-        <div class="metric"><span>说话人切换</span><b>3</b><small>次／片段</small></div>
-      </div>`
+    audioSeries: [
+      { t:0, speaker:"host", loudness:0.906, pitch:22.74 }, { t:8, speaker:"guest", loudness:0.801, pitch:25.77 },
+      { t:23, speaker:"guest", loudness:0.734, pitch:23.35 }, { t:26, speaker:"guest", loudness:0.682, pitch:24.51 },
+      { t:37, speaker:"host", loudness:0.949, pitch:22.98 }, { t:44, speaker:"guest", loudness:0.840, pitch:25.03 },
+      { t:59, speaker:"guest", loudness:0.762, pitch:20.98 }
+    ],
+    content: () => audioFeaturePanelHTML(4)
   }
 ];
+
+function formatOffset(seconds) {
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function keywordMarkerHTML(offset, duration, label) {
+  const position = Math.max(0, Math.min(100, (offset / duration) * 100));
+  return `<button type="button" class="keyword-marker" data-audio-offset="${offset}" style="left:${position}%"><span>${escapeHTML(label)}</span><i></i><time>${formatOffset(offset)}</time></button>`;
+}
+
+function timestampCommentHTML(username, time, offset, content) {
+  return `<article class="timestamp-comment"><header><b>${escapeHTML(username)}</b><button type="button" data-audio-offset="${offset}">${escapeHTML(time)}</button></header><p>${escapeHTML(content)}</p></article>`;
+}
+
+function sentimentChartHTML(points, duration) {
+  const bars = points.map(([offset, score]) => {
+    const direction = score > 0 ? "positive" : score < 0 ? "negative" : "neutral";
+    return `<div class="sentiment-point ${direction}" style="left:${(offset / duration) * 100}%;--strength:${Math.max(3, Math.abs(score) * 70)}px"><i></i><time>${formatOffset(offset)}</time><b>${Number(score).toFixed(1)}</b></div>`;
+  }).join("");
+  return `<div class="sentiment-plot" aria-label="正向在中轴线上方、负向在中轴线下方的逐句情感图"><span class="sentiment-axis-label positive">正向 +1</span><span class="sentiment-axis-label neutral">中性 0</span><span class="sentiment-axis-label negative">负向 −1</span><div class="sentiment-zero-line"></div>${bars}</div>`;
+}
+
+function audioFeaturePanelHTML(index) {
+  const trial = CONTENT_TRIALS[index];
+  const metric = state.contentAudioMetric?.[index] || "loudness";
+  const values = trial.audioSeries.map(point => Number(point[metric]));
+  const minimum = Math.min(...values);
+  const maximum = Math.max(...values);
+  const span = Math.max(0.001, maximum - minimum);
+  const points = trial.audioSeries.map((point, pointIndex) => ({
+    ...point,
+    x: 42 + (point.t / (trial.endSec - trial.startSec)) * 536,
+    y: 158 - ((Number(point[metric]) - minimum) / span) * 105,
+    value: values[pointIndex]
+  }));
+  const lines = points.slice(1).map((point, pointIndex) => {
+    const previous = points[pointIndex];
+    const speaker = point.speaker === previous.speaker ? point.speaker : previous.speaker;
+    return `<line class="audio-series-line ${speaker}" x1="${previous.x}" y1="${previous.y}" x2="${point.x}" y2="${point.y}"></line>`;
+  }).join("");
+  const dots = points.map(point => `<circle class="audio-series-dot ${point.speaker}" cx="${point.x}" cy="${point.y}" r="4"><title>${point.speaker === "host" ? "鲁豫" : "鸟鸟"} ${formatOffset(point.t)} · ${point.value.toFixed(2)}</title></circle>`).join("");
+  const ticks = [0, 15, 30, 45, 62].map(offset => `<text x="${42 + (offset / 62) * 536}" y="190" text-anchor="middle">${formatOffset(offset)}</text>`).join("");
+  return `<div class="audio-feature-toolbar" role="group" aria-label="音频特征切换"><button type="button" data-audio-metric="loudness" class="${metric === "loudness" ? "selected" : ""}">音量</button><button type="button" data-audio-metric="pitch" class="${metric === "pitch" ? "selected" : ""}">音高</button></div>
+    <div class="audio-feature-legend"><span class="host">鲁豫</span><span class="guest">鸟鸟</span><small>${metric === "loudness" ? "openSMILE Loudness 均值" : "F0 半音值"}</small></div>
+    <svg class="audio-feature-chart" viewBox="0 0 620 210" role="img" aria-label="${metric === "loudness" ? "音量" : "音高"}随时间变化折线图"><line class="chart-axis" x1="42" y1="170" x2="578" y2="170"></line><text x="6" y="58">${maximum.toFixed(2)}</text><text x="6" y="162">${minimum.toFixed(2)}</text>${lines}${dots}${ticks}</svg>
+    <p class="helper">每个点为真实逐句音频特征均值，线段颜色表示该时段的主要说话人。</p>`;
+}
 
 const STRUCTURE_TYPES = {
   list: { label: "列表", description: "按顺序浏览单集信息" },
@@ -568,6 +626,7 @@ function newState() {
     contentPlayback: {},
     contentQuestionTimes: {},
     featureUsageEvents: {},
+    contentAudioMetric: {},
     structureIndex: 0,
     layoutArm: sessionCredential.layoutArm,
     structureComparisons: balancedComparisons(id, sessionCredential.layoutArm),
@@ -610,6 +669,7 @@ state.contentAudioCompleted ||= {};
 state.contentPlayback ||= {};
 state.contentQuestionTimes ||= {};
 state.featureUsageEvents ||= {};
+state.contentAudioMetric ||= {};
 let pendingSync = (() => {
   try {
     const saved = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "null");
@@ -1154,6 +1214,7 @@ function optionHTML(name, question) {
 
 function renderContentTrial() {
   const trial = CONTENT_TRIALS[state.contentIndex];
+  state.contentQuestionTimes[state.contentIndex] ||= { shownAt: Date.now() };
   const completed = Boolean(state.contentAudioCompleted[state.contentIndex]);
   const enabled = featureEnabledFor(state.contentIndex);
   const isOpen = Boolean(state.featureOpen[state.contentIndex]);
@@ -1170,12 +1231,13 @@ function renderContentTrial() {
         <div class="feature-content" id="featureContent">${isOpen ? trial.content() : `<div class="audio-placeholder"><p>点击右上角按钮查看辅助信息。</p></div>`}</div>
       </section>` : ""}
     </div>
-    <form id="contentRatingForm" class="card content-questions ${completed ? "" : "is-locked"}" style="margin-top:20px" data-question-number="片段 ${state.contentIndex + 1}">
-      ${completed ? `<h2>回答问题</h2>
+    <form id="contentRatingForm" class="card content-questions" style="margin-top:20px" data-question-number="片段 ${state.contentIndex + 1}">
+      <h2>回答问题</h2>
       <fieldset class="question-card"><legend><span class="question-number">Q1</span>${escapeHTML(trial.q1.text)}</legend><div class="options-grid single-column">${optionHTML("contentQ1", trial.q1)}</div></fieldset>
       <fieldset class="question-card"><legend><span class="question-number">Q2</span>${escapeHTML(trial.q2.text)}</legend><div class="options-grid single-column">${optionHTML("contentQ2", trial.q2)}</div></fieldset>
-      <div class="scale-block"><label>Q3　在刚才的任务中，你觉得理解内容并找到问题答案有多容易？</label>${scaleHTML("contentEase", 7, "1 非常困难", "7 非常容易")}</div>` : `<div class="locked-message"><b>答题区尚未开启</b><p>完整播放当前片段后即可作答。</p></div>`}
-      <div class="form-actions"><button class="button" type="submit">${state.contentIndex === CONTENT_TRIALS.length - 1 ? "完成并进入 Task 3" : "提交并进入下一题"}</button></div>
+      <div class="scale-block"><label>Q3　在刚才的任务中，你觉得理解内容并找到问题答案有多容易？</label>${scaleHTML("contentEase", 7, "1 非常困难", "7 非常容易")}</div>
+      <p class="helper content-playback-status" id="contentPlaybackStatus">${completed ? "音频片段已完整播放，可以提交。" : "问题可提前查看；完整播放当前音频片段后即可提交。"}</p>
+      <div class="form-actions"><button class="button" id="contentSubmit" type="submit" ${completed ? "" : "disabled"}>${state.contentIndex === CONTENT_TRIALS.length - 1 ? "完成并进入 Task 3" : "提交并进入下一题"}</button></div>
     </form>`);
 }
 
@@ -1486,10 +1548,13 @@ function bindContentAudio() {
     if (audio.currentTime < trial.endSec - 0.12 || state.contentAudioCompleted[index]) return;
     audio.pause();
     state.contentAudioCompleted[index] = true;
-    state.contentQuestionTimes[index] = { shownAt: Date.now() };
+    state.contentQuestionTimes[index] ||= { shownAt: Date.now() };
     log("audio_segment_complete", trial.id, { listenedDurationSec: trial.endSec - trial.startSec });
     save();
-    render();
+    const submit = document.querySelector("#contentSubmit");
+    if (submit) submit.disabled = false;
+    const status = document.querySelector("#contentPlaybackStatus");
+    if (status) status.textContent = "音频片段已完整播放，可以提交。";
   });
 }
 
@@ -1706,6 +1771,34 @@ document.querySelector("#accessForm").addEventListener("submit", async event => 
 document.addEventListener("click", event => {
   const scaleButton = event.target.closest("[data-scale-target]");
   if (scaleButton) setScale(scaleButton.dataset.scaleTarget, scaleButton.dataset.scaleValue);
+
+  const timestampButton = event.target.closest("[data-audio-offset]");
+  if (timestampButton && state.step === "contentTrial") {
+    const audio = document.querySelector(".audio-control");
+    const offset = Number(timestampButton.dataset.audioOffset);
+    if (audio && Number.isFinite(offset)) {
+      const targetTime = CONTENT_TRIALS[state.contentIndex].startSec + offset;
+      if (audio.readyState >= 1) audio.currentTime = targetTime;
+      else audio.addEventListener("loadedmetadata", () => { audio.currentTime = targetTime; }, { once: true });
+      log("auxiliary_timestamp_seek", CONTENT_TRIALS[state.contentIndex].featureType, { offsetSec: offset });
+      save();
+    }
+  }
+
+  const audioMetricButton = event.target.closest("[data-audio-metric]");
+  if (audioMetricButton && state.step === "contentTrial") {
+    const metric = audioMetricButton.dataset.audioMetric;
+    if (!["loudness", "pitch"].includes(metric)) return;
+    state.contentAudioMetric[state.contentIndex] = metric;
+    const usage = state.featureUsageEvents[state.contentIndex] ||= [];
+    const metricEvent = { action: "metric_switch", metric, timestamp: new Date().toISOString(), elapsedMs: state.contentStarts[state.contentIndex] ? Date.now() - state.contentStarts[state.contentIndex] : null };
+    usage.push(metricEvent);
+    log("feature_metric_switch", CONTENT_TRIALS[state.contentIndex].featureType, metricEvent);
+    save();
+    const content = document.querySelector("#featureContent");
+    if (content) content.innerHTML = audioFeaturePanelHTML(state.contentIndex);
+    return;
+  }
 
   if (event.target.id === "introNext") goTo("profile");
   const rankingSelect = event.target.closest("[data-ranking-select]");

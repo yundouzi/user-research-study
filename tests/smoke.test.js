@@ -134,6 +134,7 @@ globalThis.__qa = {
   })(),
   contentTrialCount: CONTENT_TRIALS.length,
   contentTrials: CONTENT_TRIALS.map((trial,index) => ({ id:trial.id, featureType:trial.featureType, q1:trial.q1, q2:trial.q2, materialReady:trial.materialReady !== false, arm0: index % 2 === 0, arm1: index % 2 === 1 })),
+  contentPanelMarkup: CONTENT_TRIALS.map(trial => trial.content()),
   contentArm: state.contentArm,
   episodeCount: STRUCTURE_EPISODES.length,
   comparisons: [...state.structureComparisons],
@@ -270,7 +271,13 @@ assert.ok(qa.balanceCheck, "Each stable Task 3 question must reverse A/B positio
 assert.equal(Array.from(qa.contentTrials, item => item.featureType).join(","), "topic_keyword_timeline,transcript,timestamp_comment,sentiment_analysis,audio_features", "Task 2-D should use the five requested features in order");
 assert.ok(qa.contentTrials.every(item => item.id && item.q1.options.length === 4 && item.q2.options.length === 4), "Every Task 2-D trial needs stable IDs and two four-option questions");
 assert.ok(qa.contentTrials.every(item => item.arm0 !== item.arm1), "Task 2-D content arms must be complementary");
-assert.equal(qa.contentTrials.filter(item => !item.materialReady).length, 1, "Only the unverified timestamp-comment material should be marked pending");
+assert.equal(qa.contentTrials.filter(item => !item.materialReady).length, 0, "All five Task 2-D materials should now be ready");
+const contentMarkup = qa.stepMarkup.find(item => item.step === "contentTrial").html;
+assert.ok(contentMarkup.includes("回答问题") && contentMarkup.includes("contentQ1") && contentMarkup.includes("contentQ2"), "Task 2-D questions should be visible before playback finishes");
+assert.ok(qa.contentPanelMarkup[0].includes("keyword-timeline") && !qa.contentPanelMarkup[0].includes("topic-segment"), "The first auxiliary panel should use a keyword timeline instead of colored topic blocks");
+assert.equal((qa.contentPanelMarkup[2].match(/class="timestamp-comment"/g) || []).length, 5, "Timestamp comments should use the five verified supplied comments");
+assert.ok(qa.contentPanelMarkup[3].includes("sentiment-zero-line") && !qa.contentPanelMarkup[3].includes("linear-gradient"), "Sentiment visualization should use a positive/negative zero axis without gradients");
+assert.ok(qa.contentPanelMarkup[4].includes('data-audio-metric="loudness"') && qa.contentPanelMarkup[4].includes('data-audio-metric="pitch"'), "Audio features should provide loudness and pitch switching");
 
 const rankingRows = qa.sampleAnswerRows.slice(1).filter(row => row[4] === "information_rank");
 assert.equal(rankingRows.length, 9, "Task 2-A CSV should contain one explicit rank row per stable field ID");
