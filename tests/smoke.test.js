@@ -137,6 +137,7 @@ globalThis.__qa = {
   contentPanelMarkup: CONTENT_TRIALS.map(trial => trial.content()),
   contentArm: state.contentArm,
   episodeCount: STRUCTURE_EPISODES.length,
+  structureEpisodes: STRUCTURE_EPISODES.map(episode => ({ id:episode.id, category:episode.category, tags:[...episode.tags] })),
   comparisons: [...state.structureComparisons],
   stepMarkup: STEPS.map(step => {
     state.step = step;
@@ -168,6 +169,7 @@ globalThis.__qa = {
   commentMarkup: TASK2B_EPISODES.map(episode => revealedFieldHTML(episode, "comments")),
   similarMarkup: TASK2B_EPISODES.map(episode => revealedFieldHTML(episode, "similar_recommendations")),
   comparisonIds: STRUCTURE_COMPARISONS.map(item => item.id),
+  comparisonDefinitions: STRUCTURE_COMPARISONS.map(item => item.id + ":" + item.a.type + "-" + item.a.count + "|" + item.b.type + "-" + item.b.count),
   answerHeader: answerRows()[0],
   sampleAnswerRows,
   studyVersion: STUDY_VERSION,
@@ -224,9 +226,17 @@ assert.equal(qa.contentTrialCount, 5, "Expected five within-episode trials");
 const audioPath = path.resolve(__dirname, "..", "assets", "audio", "s8e6.m4a");
 assert.ok(fs.existsSync(audioPath) && fs.statSync(audioPath).size > 20_000_000, "Task 2-D must include the real S8E6 audio asset");
 assert.ok(qa.episodeCount >= 15, "Expected at least 15 structure episodes");
+assert.deepEqual(Array.from(qa.structureEpisodes, episode => episode.id), ["S4E5","S8E4","S8E8","S9E2","S7E7","S8E6","S8E7","S9E3","S5E8","S7E9","S8E1","S8E2","S8E3","S8E5","S9E1"], "Task 3 must preserve the prototype's fixed nested episode order");
+assert.ok(qa.structureEpisodes.every(episode => episode.category && episode.tags.length === 4), "Task 3 episodes need the prototype category and four topic tags");
 assert.equal(qa.comparisons.length, 12, "Expected twelve structure comparisons");
 assert.equal(new Set(qa.comparisons.map(item => item.id)).size, 12, "Structure comparison IDs must be unique");
 assert.equal(new Set(qa.comparisonIds).size, 12, "Comparison source definitions must be unique");
+assert.deepEqual(Array.from(qa.comparisonIds), ["T3-01","T3-02","T3-03","T3-04","T3-05","T3-06","T3-07","T3-08","T3-09","T3-10","T3-11","T3-12"], "Task 3 question IDs and source order must remain unchanged");
+assert.deepEqual(Array.from(qa.comparisonDefinitions), [
+  "T3-01:list-5|network-10","T3-02:network-10|tree-15","T3-03:tree-15|cluster-5","T3-04:cluster-5|list-10",
+  "T3-05:list-10|network-15","T3-06:network-15|tree-5","T3-07:tree-5|cluster-10","T3-08:cluster-10|list-15",
+  "T3-09:list-15|network-5","T3-10:network-5|tree-10","T3-11:tree-10|cluster-15","T3-12:cluster-15|list-5"
+], "Task 3 fixed pair definitions must remain unchanged");
 assert.ok(qa.stepMarkup.every(item => item.html && !item.html.includes("undefined")), "Every stage must render without undefined content");
 assert.ok(qa.stepMarkup.every(item => !item.html.includes("<textarea")), "Participant stages must not contain open-ended text areas");
 const profileMarkup = qa.stepMarkup.find(item => item.step === "profile").html;
@@ -274,8 +284,12 @@ assert.ok(qa.contentTrials.every(item => item.arm0 !== item.arm1), "Task 2-D con
 assert.equal(qa.contentTrials.filter(item => !item.materialReady).length, 0, "All five Task 2-D materials should now be ready");
 const contentMarkup = qa.stepMarkup.find(item => item.step === "contentTrial").html;
 assert.ok(contentMarkup.includes("回答问题") && contentMarkup.includes("contentQ1") && contentMarkup.includes("contentQ2"), "Task 2-D questions should be visible before playback finishes");
+assert.ok(contentMarkup.includes('id="contentTrialTimer"') && contentMarkup.includes("本题限时 2 分钟"), "Every Task 2-D trial should expose its two-minute timer");
+assert.ok(!contentMarkup.includes('id="contentSubmit" type="submit" disabled'), "Task 2-D submission must not require complete audio playback");
 assert.ok(qa.contentPanelMarkup[0].includes("keyword-timeline") && !qa.contentPanelMarkup[0].includes("topic-segment"), "The first auxiliary panel should use a keyword timeline instead of colored topic blocks");
 assert.equal((qa.contentPanelMarkup[2].match(/class="timestamp-comment"/g) || []).length, 5, "Timestamp comments should use the five verified supplied comments");
+assert.equal((qa.contentPanelMarkup[2].match(/class="comment-number"/g) || []).length, 5, "Timestamp comment cards should be numbered");
+assert.ok([1,2,3,4,5].every(number => qa.contentPanelMarkup[2].includes(`>${number}</button>`)), "Timestamp timeline points should share the comment numbers");
 assert.ok(qa.contentPanelMarkup[3].includes("sentiment-zero-line") && !qa.contentPanelMarkup[3].includes("linear-gradient"), "Sentiment visualization should use a positive/negative zero axis without gradients");
 assert.ok(qa.contentPanelMarkup[4].includes('data-audio-metric="loudness"') && qa.contentPanelMarkup[4].includes('data-audio-metric="pitch"'), "Audio features should provide loudness and pitch switching");
 
@@ -305,9 +319,15 @@ for (const row of task2DRows) {
 }
 
 for (const item of qa.structureMarkup) {
-  const className = item.type === "list" ? "phone-list-item" : item.type === "network" ? "phone-node" : item.type === "tree" ? "tree-leaf" : "phone-cluster-item";
-  const count = (item.html.match(new RegExp(`class=\\"${className}\\"`, "g")) || []).length;
+  const count = (item.html.match(/data-t3-episode=/g) || []).length;
   assert.equal(count, item.count, `${item.type}-${item.count} should render ${item.count} episode nodes`);
+  assert.ok(item.html.includes(`density-${item.count}`), `${item.type}-${item.count} should preserve the assigned density condition`);
+  if (item.type === "network") {
+    assert.ok(item.html.includes("t3-edge") && item.html.includes("t3-network-legend"), "Network views need similarity edges and an internal topic legend");
+    assert.equal((item.html.match(/class="t3-edge"/g) || []).length, ({5:6,10:10,15:20})[item.count], `network-${item.count} should preserve the prototype edge set`);
+  }
+  if (item.type === "tree") assert.ok(item.html.includes("data-t3-tree-toggle") && item.html.includes("t3-root-node"), "Tree views need expandable topic branches");
+  if (item.type === "cluster") assert.ok(item.html.includes("data-t3-filter") && item.html.includes("t3-category-card"), "Category views need topic filters and grouped cards");
 }
 
 console.log("Smoke checks passed: secure participant IDs, balanced Task 3 sides, separate Task 3 measures, 12 stages, and no open-ended text areas.");

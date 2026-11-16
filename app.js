@@ -6,6 +6,7 @@ const SYNC_QUEUE_KEY = "yzhStudyV8PendingSync";
 const STUDY_VERSION = 8;
 const SYNC_ENDPOINT = "/api/study/sync";
 const SESSION_ENDPOINT = "/api/study/session";
+const CONTENT_TRIAL_LIMIT_MS = 2 * 60 * 1000;
 
 const STEPS = [
   "intro",
@@ -337,20 +338,35 @@ const TASK2B_EPISODES = [
 ];
 
 const STRUCTURE_EPISODES = [
-  ...EPISODES,
-  { id: "S5E8", guest: "张春", title: "要活得很久，我做了这个决定", theme: "growth", plays: 6135436 },
-  { id: "S7E9", guest: "小帕", title: "要走多少路，才能成为一个女人", theme: "growth", plays: 3853845 },
-  { id: "S8E1", guest: "蒋胜男", title: "她可以为你而死，但不会只为你而活", theme: "relations", plays: 1653065 },
-  { id: "S8E2", guest: "陈慧", title: "人如南瓜，可攀援亦可贴地生长", theme: "relations", plays: 1527405 },
-  { id: "S8E3", guest: "扎十一惹", title: "从此我们不忧伤、不害怕", theme: "society", plays: 2775085 },
-  { id: "S8E5", guest: "朱天文", title: "他已登岸归家，吾独续写「巫」言", theme: "art", plays: 1203209 },
-  { id: "S9E1", guest: "张赞英", title: "那朵叫「赞英」的花", theme: "relations", plays: 756344 }
-];
+  { id:"S4E5", title:"在迪士尼和HBO做高管，我卖过的电影比看过的多", guest:"范贝贝", host:"陈鲁豫", category:"职场探索", tags:["影视行业","职业选择","职场管理","女性职场"], color:"#aa7856" },
+  { id:"S8E4", title:"飞向更高远的天空，即便空气稀薄", guest:"黎紫书", host:"陈鲁豫", category:"文学艺术", tags:["文学创作","文化身份","写作人生","职业选择"], color:"#9271a1" },
+  { id:"S8E8", title:"冰场上的向日葵，日复一日、向光疯长", guest:"张虹", host:"陈鲁豫", category:"运动人生", tags:["竞技体育","运动员","职业转型","女性职场"], color:"#6f8bba" },
+  { id:"S9E2", title:"我不优秀，但我依然是一个胜利者", guest:"张诺", host:"陈鲁豫", category:"运动人生", tags:["竞技体育","赛车","职业转型","女性职场"], color:"#6f8bba" },
+  { id:"S7E7", title:"敢于面向黑暗，恰因此心光明", guest:"劳东燕", host:"陈鲁豫", category:"社会观察", tags:["法律","公共表达","性别议题","职业选择"], color:"#728f8e" },
+  { id:"S8E6", title:"没有魅力的人，也值得拥有世界", guest:"鸟鸟", host:"陈鲁豫", category:"个人成长", tags:["脱口秀","创作","自我认同","性别议题"], color:"#a77a89" },
+  { id:"S8E7", title:"从「三反」到「银河」，她走出了时代", guest:"李银河", host:"陈鲁豫", category:"社会观察", tags:["社会学","亲密关系","女性成长","自我认同"], color:"#728f8e" },
+  { id:"S9E3", title:"我本布衣，种花种草种春天", guest:"蔡皋", host:"陈鲁豫", category:"文学艺术", tags:["艺术创作","自然生活","生命经验","女性成长"], color:"#9271a1" },
+  { id:"S5E8", title:"要活得很久，我做了这个决定", guest:"张春", host:"陈鲁豫", category:"个人成长", tags:["文学创作","心理健康","女性成长","自我认同"], color:"#a77a89" },
+  { id:"S7E9", title:"要走多少路，才能成为一个女人，答案在风中飘荡", guest:"小帕", host:"陈鲁豫", category:"个人成长", tags:["脱口秀","女性成长","家庭关系","自我认同"], color:"#a77a89" },
+  { id:"S8E1", title:"她可以为你而死，但不会只为你而活", guest:"蒋胜男", host:"陈鲁豫", category:"文学艺术", tags:["历史写作","文学创作","女性成长","家庭关系"], color:"#9271a1" },
+  { id:"S8E2", title:"人如南瓜，可攀援亦可贴地生长", guest:"陈慧", host:"陈鲁豫", category:"文学艺术", tags:["文学创作","家庭关系","自然生活","生命经验"], color:"#9271a1" },
+  { id:"S8E3", title:"从此我们不忧伤、不害怕", guest:"扎十一惹", host:"陈鲁豫", category:"个人成长", tags:["自然生活","女性成长","自我认同","职业选择"], color:"#a77a89" },
+  { id:"S8E5", title:"他已登岸归家，吾独续写「巫」言", guest:"朱天文", host:"陈鲁豫", category:"文学艺术", tags:["文学创作","文化身份","电影艺术","写作人生"], color:"#9271a1" },
+  { id:"S9E1", title:"那朵叫「赞英」的花", guest:"张赞英", host:"陈鲁豫", category:"个人成长", tags:["生命经验","职业选择","家庭关系","女性成长"], color:"#a77a89" }
+].map(episode => ({ ...episode, full: `${episode.id} 鲁豫对话${episode.guest}｜${episode.title}` }));
+
+const STRUCTURE_CATEGORIES = ["职场探索", "文学艺术", "运动人生", "社会观察", "个人成长"];
+const STRUCTURE_PALETTE = Object.fromEntries(STRUCTURE_EPISODES.map(episode => [episode.category, episode.color]));
+const STRUCTURE_NETWORK_VIEWS = {
+  5: { positions:{ S4E5:[56.82,77.72],S8E4:[73.01,29.82],S8E8:[28.41,49.12],S9E2:[34.09,65.44],S7E7:[26.99,21.05] }, edges:[{a:"S7E7",b:"S4E5",s:.0737},{a:"S8E4",b:"S7E7",s:.0781},{a:"S8E4",b:"S4E5",s:.0808},{a:"S4E5",b:"S9E2",s:.0902},{a:"S4E5",b:"S8E8",s:.0909},{a:"S8E8",b:"S9E2",s:.3942}] },
+  10: { positions:{ S4E5:[22.6,29.3],S8E4:[43.83,8.95],S8E8:[16.48,57.33],S9E2:[25.9,76.05],S7E7:[81.07,70.41],S8E6:[75.77,16.81],S8E7:[55.2,60.67],S9E3:[56.27,90.7],S5E8:[83.52,43.98],S7E9:[58.33,33.42] }, edges:[{a:"S8E4",b:"S4E5",s:.0808},{a:"S8E4",b:"S5E8",s:.09},{a:"S4E5",b:"S9E2",s:.0902},{a:"S4E5",b:"S8E8",s:.0909},{a:"S7E7",b:"S8E6",s:.1048},{a:"S8E7",b:"S5E8",s:.1756},{a:"S8E7",b:"S7E9",s:.1786},{a:"S5E8",b:"S7E9",s:.1966},{a:"S8E6",b:"S7E9",s:.235},{a:"S8E8",b:"S9E2",s:.3942}] },
+  15: { positions:{ S4E5:[18.89,73.74],S8E4:[82.23,58.77],S8E8:[24.5,14.91],S9E2:[16.48,28.3],S7E7:[49.5,8.95],S8E6:[16.9,51.8],S8E7:[54.35,92.34],S9E3:[64.93,18.25],S5E8:[40.71,83.04],S7E9:[37.99,64.45],S8E1:[67.16,75.25],S8E2:[60.3,35.45],S8E3:[42.08,44.75],S8E5:[85.3,38.87],S9E1:[57.23,54.63] }, edges:[{a:"S7E7",b:"S8E6",s:.1048},{a:"S8E7",b:"S5E8",s:.1756},{a:"S8E7",b:"S7E9",s:.1786},{a:"S8E7",b:"S8E3",s:.1839},{a:"S5E8",b:"S8E1",s:.1889},{a:"S5E8",b:"S7E9",s:.1966},{a:"S7E9",b:"S8E3",s:.2026},{a:"S5E8",b:"S8E3",s:.2031},{a:"S7E9",b:"S8E1",s:.204},{a:"S8E1",b:"S9E1",s:.2053},{a:"S8E3",b:"S9E1",s:.2074},{a:"S7E9",b:"S9E1",s:.2121},{a:"S9E3",b:"S9E1",s:.2123},{a:"S9E3",b:"S8E3",s:.215},{a:"S8E1",b:"S8E2",s:.2182},{a:"S8E6",b:"S7E9",s:.235},{a:"S9E3",b:"S8E2",s:.2478},{a:"S8E2",b:"S9E1",s:.2538},{a:"S8E8",b:"S9E2",s:.3942},{a:"S8E4",b:"S8E5",s:.4202}] }
+};
 
 const CONTENT_TRIALS = [
   {
     id: "T2-D01", featureType: "topic_keyword_timeline", feature: "主题关键词时间轴", startSec: 626, endSec: 685,
-    prompt: "请完整收听音频，然后回答三道题。",
+    prompt: "请按需收听音频，并在 2 分钟内回答三道题。",
     q1: { text: "鸟鸟小时候独自在家时，为什么需要寻找备用钥匙？", options: [["A","她想打开父母的卧室"],["B","父母把厕所门锁上，避免她接近厨房"],["C","她把家门钥匙弄丢了"],["D","她想去楼下买雪糕"]], correct: "B" },
     q2: { text: "这段经历的叙述顺序是什么？", options: [["A","偷吃雪糕—父母回家—找到钥匙—厕所被锁"],["B","父母回家—厕所被锁—独自在家—买雪糕"],["C","独自在家的风险—厕所被锁—找到备用钥匙—偷吃雪糕忘关冰箱"],["D","找到钥匙—去学校—独自在家—父母回家"]], correct: "C" },
     content: () => `
@@ -361,7 +377,7 @@ const CONTENT_TRIALS = [
   },
   {
     id: "T2-D02", featureType: "transcript", feature: "转写文本", startSec: 1445, endSec: 1503,
-    prompt: "请完整收听音频，然后回答三道题。",
+    prompt: "请按需收听音频，并在 2 分钟内回答三道题。",
     q1: { text: "鸟鸟为什么说自己在大学里感到不快乐和孤独？", options: [["A","她不喜欢学校所在的城市"],["B","她没有参加任何社团"],["C","她觉得课程太简单"],["D","她关心文学和社会议题，但身边同学很少与她交流这些内容"]], correct: "D" },
     q2: { text: "鸟鸟提到，部分理工科学生相信什么？", options: [["A","读万卷书不如行万里路"],["B","学好数理化，走遍天下都不怕"],["C","兴趣是最好的老师"],["D","实践比理论更重要"]], correct: "B" },
     content: () => `
@@ -375,22 +391,22 @@ const CONTENT_TRIALS = [
   },
   {
     id: "T2-D03", featureType: "timestamp_comment", feature: "时间戳评论", startSec: 3790, endSec: 3860,
-    prompt: "请完整收听音频，然后回答三道题。",
+    prompt: "请按需收听音频，并在 2 分钟内回答三道题。",
     q1: { text: "为什么前辈女性脱口秀演员对鸟鸟很重要？", options: [["A","她们替鸟鸟修改了全部段子"],["B","她们在舞台上的掌控力让鸟鸟能够想象自己也可以做到"],["C","她们邀请鸟鸟加入相声社团"],["D","她们帮助鸟鸟找到电视台工作"]], correct: "B" },
     q2: { text: "鸟鸟说自己在开始练习一件事之前，通常需要什么？", options: [["A","先获得正式证书"],["B","先得到家人的许可"],["C","先准备完整商业计划"],["D","先看到别人成功完成过这件事"]], correct: "D" },
     content: () => `
-      <div class="comment-timeline" aria-label="时间戳评论索引"><div class="timeline-line"></div>${[14,28,42,47,61].map(offset => `<button type="button" class="comment-dot" data-audio-offset="${offset}" style="left:${(offset / 70) * 100}%" aria-label="跳转到 ${formatOffset(offset)}"></button>`).join("")}<span class="timeline-start">1:03:10</span><span class="timeline-end">1:04:20</span></div>
+      <div class="comment-timeline" aria-label="时间戳评论索引"><div class="timeline-line"></div>${[14,28,42,47,61].map((offset, index) => `<button type="button" class="comment-dot" data-audio-offset="${offset}" style="left:${(offset / 70) * 100}%" aria-label="第 ${index + 1} 条评论，跳转到 ${formatOffset(offset)}">${index + 1}</button>`).join("")}<span class="timeline-start">1:03:10</span><span class="timeline-end">1:04:20</span></div>
       <div class="timestamp-comments">
-        ${timestampCommentHTML("柚子哥", "1:03:24", 14, "脑海中蹦出六个字，真的吗，我不信。从第一分钟就大大疑惑于这位嘉宾有气无力的音量和每句尾向下的音调，真的是脱口秀演员吗。")}
-        ${timestampCommentHTML("HD724814z", "1:03:38", 28, "这里好感动，所以女孩子才应该去往各行各业，你们只要在那里，就足以给后来的女孩子勇气。")}
-        ${timestampCommentHTML("拉链的开口", "1:03:52", 42, "女性榜样留在牌桌上的重要性！")}
-        ${timestampCommentHTML("刘亦菲月子版", "1:03:57", 47, "我现在感觉到这个社会没有什么东西是真正重要的。只有你爱他，你才会觉得他重要，脱口秀也是这么一件事情。")}
-        ${timestampCommentHTML("Goya_CIHA", "1:04:11", 61, "因为没有相声女演员，所以没有办法去带入她们。很多时候身为女性，在一些男性主导的领域上也有一种局外人的感觉。很感谢各行各业里发光发热的女性前辈们。")}
+        ${timestampCommentHTML(1, "柚子哥", "1:03:24", 14, "脑海中蹦出六个字，真的吗，我不信。从第一分钟就大大疑惑于这位嘉宾有气无力的音量和每句尾向下的音调，真的是脱口秀演员吗。")}
+        ${timestampCommentHTML(2, "HD724814z", "1:03:38", 28, "这里好感动，所以女孩子才应该去往各行各业，你们只要在那里，就足以给后来的女孩子勇气。")}
+        ${timestampCommentHTML(3, "拉链的开口", "1:03:52", 42, "女性榜样留在牌桌上的重要性！")}
+        ${timestampCommentHTML(4, "刘亦菲月子版", "1:03:57", 47, "我现在感觉到这个社会没有什么东西是真正重要的。只有你爱他，你才会觉得他重要，脱口秀也是这么一件事情。")}
+        ${timestampCommentHTML(5, "Goya_CIHA", "1:04:11", 61, "因为没有相声女演员，所以没有办法去带入她们。很多时候身为女性，在一些男性主导的领域上也有一种局外人的感觉。很感谢各行各业里发光发热的女性前辈们。")}
       </div>`
   },
   {
     id: "T2-D04", featureType: "sentiment_analysis", feature: "情感分析", startSec: 4514, endSec: 4572,
-    prompt: "请完整收听音频，然后回答三道题。",
+    prompt: "请按需收听音频，并在 2 分钟内回答三道题。",
     q1: { text: "鸟鸟在这段中如何看待“魅力”？", options: [["A","只有有魅力的人才值得被喜欢"],["B","魅力完全由外貌决定"],["C","没有魅力的人也值得拥有好的生活体验"],["D","魅力只能通过表演训练获得"]], correct: "C" },
     q2: { text: "这段对话的情感走向更接近哪一种？", options: [["A","从中性提问转向积极肯定，最后回到反思"],["B","从愤怒持续转向更强烈的愤怒"],["C","始终是悲伤和否定"],["D","完全没有情绪变化"]], correct: "A" },
     content: () => `
@@ -399,7 +415,7 @@ const CONTENT_TRIALS = [
   },
   {
     id: "T2-D05", featureType: "audio_features", feature: "音频分析特征", startSec: 2304, endSec: 2366,
-    prompt: "请完整收听音频，然后回答三道题。",
+    prompt: "请按需收听音频，并在 2 分钟内回答三道题。",
     q1: { text: "鸟鸟对创作的看法发生了什么变化？", options: [["A","她认为只有成熟作家才应发表作品"],["B","她开始认为青涩作品和不完整片段也可能有价值"],["C","她不再阅读卡夫卡"],["D","她认为创作必须带来痛苦"]], correct: "B" },
     q2: { text: "在这段音频中，谁的发言时长占比更高？", options: [["A","鲁豫，约占四分之三"],["B","两人完全相同"],["C","鸟鸟，约占四分之三"],["D","无法听出任何说话人切换"]], correct: "C" },
     audioSeries: [
@@ -421,8 +437,8 @@ function keywordMarkerHTML(offset, duration, label) {
   return `<button type="button" class="keyword-marker" data-audio-offset="${offset}" style="left:${position}%"><span>${escapeHTML(label)}</span><i></i><time>${formatOffset(offset)}</time></button>`;
 }
 
-function timestampCommentHTML(username, time, offset, content) {
-  return `<article class="timestamp-comment"><header><b>${escapeHTML(username)}</b><button type="button" data-audio-offset="${offset}">${escapeHTML(time)}</button></header><p>${escapeHTML(content)}</p></article>`;
+function timestampCommentHTML(number, username, time, offset, content) {
+  return `<article class="timestamp-comment"><span class="comment-number" aria-hidden="true">${number}</span><div><header><b>${escapeHTML(username)}</b><button type="button" data-audio-offset="${offset}">${escapeHTML(time)}</button></header><p>${escapeHTML(content)}</p></div></article>`;
 }
 
 function sentimentChartHTML(points, duration) {
@@ -623,6 +639,8 @@ function newState() {
     featureOpen: {},
     contentArm: sessionCredential.contentArm,
     contentAudioCompleted: {},
+    contentTrialPageStarts: {},
+    contentDeadlines: {},
     contentPlayback: {},
     contentQuestionTimes: {},
     featureUsageEvents: {},
@@ -666,6 +684,8 @@ state.needsResponses ||= state.answers.needs ? { ...state.answers.needs } : {};
 state.needsQuestionDurations ||= {};
 state.contentArm = [0, 1].includes(state.contentArm) ? state.contentArm : sessionCredential.contentArm;
 state.contentAudioCompleted ||= {};
+state.contentTrialPageStarts ||= {};
+state.contentDeadlines ||= {};
 state.contentPlayback ||= {};
 state.contentQuestionTimes ||= {};
 state.featureUsageEvents ||= {};
@@ -1186,8 +1206,8 @@ function renderContentIntro() {
     <section class="hero-panel">
       <div class="eyebrow">Level 2 · Task 2-D</div>
       <h1>单集内辅助信息测试</h1>
-      <p class="lede">接下来你将收听 5 段约 1 分钟的真实播客音频，并完成内容理解题与主观评价。整体目标用时约 10 分钟，不设强制倒计时。</p>
-      <ul class="instruction-list"><li>请先完整播放当前片段，播放结束后会显示答题区。</li><li>部分片段会提供一种辅助信息，部分片段仅显示音频。</li><li>答题时仍可重复播放或拖动进度；提交后进入下一段。</li></ul>
+      <p class="lede">接下来你将收听 5 段约 1 分钟的真实播客音频，并完成内容理解题与主观评价。每段限时 2 分钟。</p>
+      <ul class="instruction-list"><li>进入每段后即可查看并回答问题，无需播放完整音频。</li><li>部分片段会提供一种辅助信息，部分片段仅显示音频。</li><li>可重复播放或拖动进度；超时将保存当前作答并进入下一段。</li></ul>
       <div class="notice">页面不会显示正确答案或即时得分。请按照自己的理解作答。</div>
       <div class="form-actions"><button class="button" id="contentBegin" type="button">开始第 1 个片段</button></div>
     </section>
@@ -1212,19 +1232,25 @@ function optionHTML(name, question) {
   return question.options.map(([value, label]) => `<label class="option"><input type="radio" name="${name}" value="${value}" required><span>${value}. ${escapeHTML(label)}</span></label>`).join("");
 }
 
+function ensureContentTrialTiming(index = state.contentIndex) {
+  const now = Date.now();
+  state.contentTrialPageStarts[index] ||= now;
+  state.contentDeadlines[index] ||= state.contentTrialPageStarts[index] + CONTENT_TRIAL_LIMIT_MS;
+}
+
 function renderContentTrial() {
+  ensureContentTrialTiming();
   const trial = CONTENT_TRIALS[state.contentIndex];
   state.contentQuestionTimes[state.contentIndex] ||= { shownAt: Date.now() };
-  const completed = Boolean(state.contentAudioCompleted[state.contentIndex]);
   const enabled = featureEnabledFor(state.contentIndex);
   const isOpen = Boolean(state.featureOpen[state.contentIndex]);
   const source = audioSource(state.contentIndex);
-  return wrap(`${sectionHeader(`Task 2-D · ${state.contentIndex + 1}/5`, `片段 ${state.contentIndex + 1}`, trial.prompt, `<span class="badge ${enabled ? "warm" : "dark"}">${enabled ? "有辅助信息" : "仅音频"}</span>`)}
+  return wrap(`${sectionHeader(`Task 2-D · ${state.contentIndex + 1}/5`, `片段 ${state.contentIndex + 1}`, trial.prompt, `<span class="badge ${enabled ? "warm" : "dark"}">${enabled ? "有辅助信息" : "仅音频"}</span><span class="badge warm">剩余 <b id="contentTrialTimer">02:00</b></span>`)}
     <div class="trial-layout ${enabled ? "" : "audio-only"}">
       <section class="card audio-panel">
         <div class="eyebrow">《岩中花述》S8E6 · ${String(Math.floor(trial.startSec / 60)).padStart(2,"0")}:${String(trial.startSec % 60).padStart(2,"0")}–${String(Math.floor(trial.endSec / 60)).padStart(2,"0")}:${String(trial.endSec % 60).padStart(2,"0")}</div>
         ${source ? `<audio class="audio-control" controls preload="metadata" src="${escapeHTML(source)}" data-start="${trial.startSec}" data-end="${trial.endSec}"></audio>` : `<div class="audio-placeholder"><div>${waveformHTML()}<b>音频文件缺失</b><p class="helper">请研究者检查 study-materials.js。</p></div></div>`}
-        <p class="helper">请完整播放本段。片段结束后答题区会自动出现，之后仍可重复播放和拖动。</p>
+        <p class="helper">可播放、暂停、拖动或重复收听；无需播放完整片段即可提交。</p>
       </section>
       ${enabled ? `<section class="card feature-panel">
         <div class="feature-status"><div><div class="eyebrow">辅助信息</div><h2>${trial.feature}</h2></div><button class="feature-toggle" id="featureToggle" type="button">${isOpen ? "收起辅助信息" : `查看${trial.feature}`}</button></div>
@@ -1236,8 +1262,8 @@ function renderContentTrial() {
       <fieldset class="question-card"><legend><span class="question-number">Q1</span>${escapeHTML(trial.q1.text)}</legend><div class="options-grid single-column">${optionHTML("contentQ1", trial.q1)}</div></fieldset>
       <fieldset class="question-card"><legend><span class="question-number">Q2</span>${escapeHTML(trial.q2.text)}</legend><div class="options-grid single-column">${optionHTML("contentQ2", trial.q2)}</div></fieldset>
       <div class="scale-block"><label>Q3　在刚才的任务中，你觉得理解内容并找到问题答案有多容易？</label>${scaleHTML("contentEase", 7, "1 非常困难", "7 非常容易")}</div>
-      <p class="helper content-playback-status" id="contentPlaybackStatus">${completed ? "音频片段已完整播放，可以提交。" : "问题可提前查看；完整播放当前音频片段后即可提交。"}</p>
-      <div class="form-actions"><button class="button" id="contentSubmit" type="submit" ${completed ? "" : "disabled"}>${state.contentIndex === CONTENT_TRIALS.length - 1 ? "完成并进入 Task 3" : "提交并进入下一题"}</button></div>
+      <p class="helper content-playback-status" id="contentPlaybackStatus">本题限时 2 分钟，可在任意时间提交；超时后将保存当前作答并进入下一题。</p>
+      <div class="form-actions"><button class="button" id="contentSubmit" type="submit">${state.contentIndex === CONTENT_TRIALS.length - 1 ? "完成并进入 Task 3" : "提交并进入下一题"}</button></div>
     </form>`);
 }
 
@@ -1259,61 +1285,56 @@ function renderStructureIntro() {
   </div>`);
 }
 
-const NETWORK_POSITIONS = {
-  5: [[18,18],[53,13],[82,26],[29,63],[72,78]],
-  10: [[16,13],[48,13],[82,12],[27,35],[64,32],[87,43],[15,61],[46,58],[78,67],[48,86]],
-  15: [[15,10],[48,11],[82,10],[26,27],[61,26],[88,31],[13,47],[45,45],[78,49],[27,64],[60,64],[88,69],[14,84],[47,84],[79,86]]
-};
+function structureCoverHTML() {
+  return `<span class="t3-cover" aria-hidden="true">岩中<br>花述</span>`;
+}
 
-function edgeHTML(from, to, strong = false) {
-  const deltaX = to[0] - from[0];
-  const deltaY = to[1] - from[1];
-  const width = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-  const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
-  return `<i class="network-edge ${strong ? "strong" : ""}" style="left:${from[0]}%;top:${from[1]}%;width:${width}%;transform:rotate(${angle}deg)"></i>`;
+function structureEpisodeDetailHTML(episode) {
+  return `<div class="t3-detail-origin"><i style="background:${episode.color}"></i>${escapeHTML(episode.category)} · ${escapeHTML(episode.id)}</div><h3>${escapeHTML(episode.full)}</h3><p>主持人：${escapeHTML(episode.host)}<br>嘉宾：${escapeHTML(episode.guest)}</p><div class="t3-tag-set">${episode.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join("")}</div>`;
 }
 
 function structureList(episodes) {
-  return `<div class="phone-list" style="grid-template-rows:repeat(${episodes.length},1fr)">${episodes.map(episode => {
-    const theme = THEME_META[episode.theme];
-    return `<div class="phone-list-item" style="--node-color:${theme.color}"><i class="phone-list-mark"></i><span><b>${episode.id} 鲁豫对话${episode.guest}</b><small>${episode.title} · ${theme.label}</small></span></div>`;
-  }).join("")}</div>`;
+  return `<div class="t3-scroll t3-feed" aria-label="播客列表">${episodes.map(episode => `<button type="button" class="t3-episode-row" data-t3-episode="${episode.id}" aria-label="查看${episode.id}完整信息">${structureCoverHTML()}<span class="t3-episode-copy"><b>${episode.id} · ${escapeHTML(episode.title)}</b><small>${escapeHTML(episode.guest)} <i style="background:${episode.color}"></i><em>${escapeHTML(episode.category)}</em></small></span></button>`).join("")}</div>`;
 }
 
-function structureNetwork(episodes) {
-  const positions = NETWORK_POSITIONS[episodes.length];
-  const edges = [];
-  Object.keys(THEME_META).forEach(themeKey => {
-    const members = episodes.map((episode, index) => ({ episode, index })).filter(item => item.episode.theme === themeKey);
-    for (let index = 1; index < members.length; index += 1) edges.push(edgeHTML(positions[members[index - 1].index], positions[members[index].index], true));
-  });
-  for (let index = 1; index < episodes.length; index += 4) edges.push(edgeHTML(positions[index - 1], positions[index], false));
-  const nodes = episodes.map((episode, index) => {
-    const theme = THEME_META[episode.theme];
-    return `<div class="phone-node" style="left:${positions[index][0]}%;top:${positions[index][1]}%;--node-color:${theme.color}"><b>${episode.id} · ${episode.guest}</b><small>${theme.label}</small></div>`;
+function structureNetwork(episodes, count) {
+  const view = STRUCTURE_NETWORK_VIEWS[count];
+  const edges = view.edges.map(edge => {
+    const from = view.positions[edge.a];
+    const to = view.positions[edge.b];
+    const opacity = Math.max(.2, Math.min(.9, .22 + edge.s * 1.65));
+    const width = (1 + 9 * edge.s).toFixed(2);
+    return `<line class="t3-edge" data-t3-a="${edge.a}" data-t3-b="${edge.b}" x1="${(from[0] * 3.52).toFixed(2)}" y1="${(from[1] * 5.70).toFixed(2)}" x2="${(to[0] * 3.52).toFixed(2)}" y2="${(to[1] * 5.70).toFixed(2)}" stroke-opacity="${opacity}" stroke-width="${width}"></line>`;
   }).join("");
-  return `<div class="phone-network">${edges.join("")}${nodes}</div>`;
+  const nodes = episodes.map(episode => {
+    const position = view.positions[episode.id];
+    return `<button type="button" class="t3-net-node" style="left:${position[0]}%;top:${position[1]}%;--cat:${episode.color}" data-t3-node data-t3-episode="${episode.id}" aria-label="${episode.id} ${escapeHTML(episode.guest)}，查看完整信息"><span>${episode.id} · ${escapeHTML(episode.guest)}</span><small>${escapeHTML(episode.category)}</small></button>`;
+  }).join("");
+  const legend = Object.entries(STRUCTURE_PALETTE).map(([name, color]) => `<span><i style="background:${color}"></i>${escapeHTML(name)}</span>`).join("");
+  return `<div class="t3-network-shell"><div class="t3-net-stage" data-t3-network><svg viewBox="0 0 352 570" preserveAspectRatio="none" aria-hidden="true">${edges}</svg>${nodes}<div class="t3-net-foot">${episodes.length} 节点 · ${view.edges.length} 条联系</div></div><div class="t3-network-legend">${legend}<small>主题越相似，节点越近、连线越粗</small></div></div>`;
 }
 
-function structureClusters(episodes) {
-  return `<div class="phone-clusters">${Object.entries(THEME_META).map(([key, theme]) => {
-    const members = episodes.filter(episode => episode.theme === key);
-    return `<section class="phone-cluster" style="--cluster-color:${theme.color}"><b>${theme.label} · ${members.length}</b><div class="phone-cluster-items">${members.map(episode => `<span class="phone-cluster-item">${episode.id} ${episode.guest}</span>`).join("")}</div></section>`;
-  }).join("")}</div>`;
+function structureGroupedEpisodes(episodes) {
+  return STRUCTURE_CATEGORIES.map(category => ({ category, color: STRUCTURE_PALETTE[category], episodes: episodes.filter(episode => episode.category === category) })).filter(group => group.episodes.length);
 }
 
-function structureTree(episodes) {
-  const activeThemes = Object.entries(THEME_META).filter(([key]) => episodes.some(episode => episode.theme === key));
-  return `<div class="phone-tree"><div class="tree-root">岩中花述</div><div class="tree-groups">${activeThemes.map(([key, theme]) => {
-    const members = episodes.filter(episode => episode.theme === key);
-    return `<section class="tree-group" style="--tree-color:${theme.color}"><b class="tree-theme">${theme.label}</b><div class="tree-leaves">${members.map(episode => `<span class="tree-leaf">${episode.id} ${episode.guest}</span>`).join("")}</div></section>`;
-  }).join("")}</div></div>`;
+function structureTree(episodes, instance) {
+  const groups = structureGroupedEpisodes(episodes);
+  return `<div class="t3-scroll t3-tree" aria-label="播客层级树"><div class="t3-root-node">${structureCoverHTML()}<div><b>岩中花述 · 播客节目</b><small>${episodes.length} 期单集 · ${groups.length} 个主题 · 主持人 陈鲁豫</small></div></div><div class="t3-tree-stack">${groups.map((group, index) => `<section class="t3-tree-section" style="--cat:${group.color}"><i class="t3-tree-branch"></i><button type="button" class="t3-topic-head" data-t3-tree-toggle="${instance}-${index}" aria-expanded="true"><i></i><b>${escapeHTML(group.category)}</b><small>${group.episodes.length} 期</small><span>⌄</span></button><div class="t3-branch-content" data-t3-tree-content="${instance}-${index}">${group.episodes.map(episode => `<button type="button" class="t3-episode-leaf" data-t3-episode="${episode.id}" aria-label="${episode.id} ${escapeHTML(episode.guest)}，查看完整信息">${structureCoverHTML()}<span><b>${episode.id} · ${escapeHTML(episode.guest)}</b><small>${escapeHTML(episode.title)}</small></span><i></i></button>`).join("")}</div></section>`).join("")}</div><p class="t3-tree-hint">点击主题收起分支；点击单集了解详情</p></div>`;
 }
 
-function structureHTML(type, count) {
+function structureClusters(episodes, instance) {
+  const groups = structureGroupedEpisodes(episodes);
+  const filters = ["全部", ...groups.map(group => group.category)].map((category, index) => `<button type="button" class="t3-category-filter ${index === 0 ? "active" : ""}" data-t3-filter="${escapeHTML(category)}" data-t3-instance="${instance}" aria-pressed="${index === 0}">${escapeHTML(category)}</button>`).join("");
+  const cards = groups.map(group => `<section class="t3-category-card" data-t3-category="${escapeHTML(group.category)}" style="--cat:${group.color};--wash:${group.color}12;--line:${group.color}55"><header><i></i><b>${escapeHTML(group.category)}</b><small>${group.episodes.length} 期播客</small></header><div>${group.episodes.map(episode => `<button type="button" class="t3-category-entry" data-t3-episode="${episode.id}" aria-label="${episode.id} ${escapeHTML(episode.guest)}，查看完整信息">${structureCoverHTML()}<span><b>${episode.id} · ${escapeHTML(episode.guest)}</b><small>${escapeHTML(episode.title)}</small><em>${episode.tags.slice(0, 2).map(tag => `<i>${escapeHTML(tag)}</i>`).join("")}</em></span></button>`).join("")}</div></section>`).join("");
+  return `<div class="t3-scroll t3-categories" data-t3-category-root="${instance}" aria-label="播客主题分类"><nav>${filters}</nav>${cards}<p>已按主题整理全部 ${episodes.length} 期节目</p></div>`;
+}
+
+function structureHTML(type, count, instance = `${type}-${count}`) {
   const episodes = STRUCTURE_EPISODES.slice(0, count);
-  const content = type === "list" ? structureList(episodes) : type === "network" ? structureNetwork(episodes) : type === "tree" ? structureTree(episodes) : structureClusters(episodes);
-  return `<div class="phone density-${count}"><div class="phone-screen"><div class="phone-status"><span>9:41</span><span>● ● ▰</span></div><div class="phone-caption">岩中花述 · ${count} 期 · ${STRUCTURE_TYPES[type].label}</div><div class="phone-content">${content}</div></div></div>`;
+  const content = type === "list" ? structureList(episodes) : type === "network" ? structureNetwork(episodes, count) : type === "tree" ? structureTree(episodes, instance) : structureClusters(episodes, instance);
+  const notes = { list:"单集标题 · 嘉宾 · 主题", network:"靠近表示相关 · 点击查看详情", tree:"展开主题分支 · 点击单集查看详情", cluster:"主题分组 · 可筛选感兴趣的类别" };
+  return `<div class="phone t3-phone density-${count}" data-t3-instance="${instance}"><div class="phone-screen"><div class="t3-status"><span>9:41</span><span>●● ▰</span></div><div class="t3-app-head"><b>岩中花述</b><small>${count} 期 · ${STRUCTURE_TYPES[type].label}</small></div><div class="t3-screen-note">${notes[type]}</div><div class="t3-phone-content">${content}</div></div></div>`;
 }
 
 function renderStructureTrial() {
@@ -1323,9 +1344,10 @@ function renderStructureTrial() {
   const optionLabel = (side, condition, metadata) => `${side}：${metadata.label}结构 · ${condition.count} 期`;
   return wrap(`${sectionHeader(`Task 3 · ${state.structureIndex + 1}/12`, `${comparison.id} · A/B 结构对比`, "请先整体观察两个手机界面，再完成下方两项选择。", `<span class="badge">题目顺序已随机</span>`)}
     <div class="comparison-grid">
-      <section class="comparison-option"><div class="comparison-label"><b>A</b><span>${aMeta.label}结构 · ${comparison.a.count} 期</span></div><div class="phone-stage compact">${structureHTML(comparison.a.type, comparison.a.count)}</div></section>
-      <section class="comparison-option"><div class="comparison-label"><b>B</b><span>${bMeta.label}结构 · ${comparison.b.count} 期</span></div><div class="phone-stage compact">${structureHTML(comparison.b.type, comparison.b.count)}</div></section>
+      <section class="comparison-option"><div class="comparison-label"><b>A</b><span>${aMeta.label}结构 · ${comparison.a.count} 期</span></div><div class="phone-stage compact">${structureHTML(comparison.a.type, comparison.a.count, "A")}</div></section>
+      <section class="comparison-option"><div class="comparison-label"><b>B</b><span>${bMeta.label}结构 · ${comparison.b.count} 期</span></div><div class="phone-stage compact">${structureHTML(comparison.b.type, comparison.b.count, "B")}</div></section>
     </div>
+    <div class="t3-floating-detail" id="task3Detail" role="status" aria-live="polite"></div>
     <form id="structureComparisonForm" class="card comparison-form">
       <section class="pair-question"><h3>Q1　哪个界面在第一眼看上去更舒适？</h3>${radioChoices("visualChoice", [["A",optionLabel("A", comparison.a, aMeta)],["B",optionLabel("B", comparison.b, bMeta)]])}</section>
       <section class="pair-question"><h3>Q2　哪个界面更容易理解节目内容及信息组织？</h3>${radioChoices("understandingChoice", [["A",optionLabel("A", comparison.a, aMeta)],["B",optionLabel("B", comparison.b, bMeta)]])}</section>
@@ -1407,6 +1429,63 @@ function setScale(target, value) {
   input.value = value;
   document.querySelectorAll(`[data-scale-target="${target}"]`).forEach(button => button.classList.toggle("selected", button.dataset.scaleValue === value));
   log("scale_select", target, { value: Number(value) });
+}
+
+let task3PinnedKey = "";
+
+function task3EpisodeById(id) {
+  return STRUCTURE_EPISODES.find(episode => episode.id === id);
+}
+
+function highlightTask3Network(anchor, episodeId) {
+  const network = anchor?.closest?.("[data-t3-network]");
+  document.querySelectorAll("[data-t3-network]").forEach(other => {
+    other.querySelectorAll("[data-t3-node]").forEach(node => node.classList.remove("dimmed", "selected"));
+    other.querySelectorAll(".t3-edge").forEach(edge => edge.classList.remove("dimmed", "active"));
+  });
+  if (!network || !episodeId) return;
+  const relatedIds = new Set([episodeId]);
+  network.querySelectorAll(".t3-edge").forEach(edge => {
+    const active = edge.dataset.t3A === episodeId || edge.dataset.t3B === episodeId;
+    edge.classList.toggle("active", active);
+    edge.classList.toggle("dimmed", !active);
+    if (active) relatedIds.add(edge.dataset.t3A === episodeId ? edge.dataset.t3B : edge.dataset.t3A);
+  });
+  network.querySelectorAll("[data-t3-node]").forEach(node => {
+    node.classList.toggle("selected", node.dataset.t3Episode === episodeId);
+    node.classList.toggle("dimmed", !relatedIds.has(node.dataset.t3Episode));
+  });
+}
+
+function showTask3Detail(anchor, togglePin = false) {
+  if (state.step !== "structureTrial") return;
+  const episode = task3EpisodeById(anchor.dataset.t3Episode);
+  const instance = anchor.closest("[data-t3-instance]")?.dataset.t3Instance || "";
+  const key = `${instance}:${episode?.id || ""}`;
+  if (!episode) return;
+  if (togglePin) {
+    if (task3PinnedKey === key) return hideTask3Detail(true);
+    task3PinnedKey = key;
+  } else if (task3PinnedKey && task3PinnedKey !== key) return;
+  const detail = document.querySelector("#task3Detail");
+  if (!detail) return;
+  detail.innerHTML = structureEpisodeDetailHTML(episode);
+  const rect = anchor.getBoundingClientRect();
+  const width = 270;
+  const height = 205;
+  const left = Math.min(window.innerWidth - width - 12, Math.max(12, rect.left + rect.width / 2 - width / 2));
+  const preferredTop = rect.bottom + 11 + height < window.innerHeight ? rect.bottom + 11 : rect.top - height - 11;
+  detail.style.left = `${left}px`;
+  detail.style.top = `${Math.max(12, Math.min(window.innerHeight - height - 12, preferredTop))}px`;
+  detail.classList.add("visible");
+  highlightTask3Network(anchor, episode.id);
+}
+
+function hideTask3Detail(force = false) {
+  if (task3PinnedKey && !force) return;
+  if (force) task3PinnedKey = "";
+  document.querySelector("#task3Detail")?.classList.remove("visible");
+  highlightTask3Network(null, "");
 }
 
 function collectForm(form) {
@@ -1551,16 +1630,86 @@ function bindContentAudio() {
     state.contentQuestionTimes[index] ||= { shownAt: Date.now() };
     log("audio_segment_complete", trial.id, { listenedDurationSec: trial.endSec - trial.startSec });
     save();
-    const submit = document.querySelector("#contentSubmit");
-    if (submit) submit.disabled = false;
     const status = document.querySelector("#contentPlaybackStatus");
-    if (status) status.textContent = "音频片段已完整播放，可以提交。";
+    if (status) status.textContent = "音频片段已完整播放；仍可在剩余时间内检查或修改答案。";
   });
+}
+
+let contentTrialCompleting = false;
+
+function completeContentTrial(timedOut = false) {
+  if (contentTrialCompleting || state.step !== "contentTrial") return;
+  const index = state.contentIndex;
+  const form = document.querySelector("#contentRatingForm");
+  if (!form) return;
+  const data = collectForm(form);
+  if (!timedOut) {
+    if (!data.contentQ1) return showIncompleteQuestion("Q1", "请选择答案", form.querySelector("input[name='contentQ1']"));
+    if (!data.contentQ2) return showIncompleteQuestion("Q2", "请选择答案", form.querySelector("input[name='contentQ2']"));
+    if (!validateScale(["contentEase"], "Q3")) return;
+  }
+  contentTrialCompleting = true;
+  stopCountdown();
+  state.answers.contentTrials ||= {};
+  const trial = CONTENT_TRIALS[index];
+  const times = state.contentQuestionTimes[index] || {};
+  const playback = state.contentPlayback[index] || { playbackCount: 0, seekEvents: [] };
+  const pageStart = state.contentTrialPageStarts[index] || state.pageEnteredAt || Date.now();
+  state.answers.contentTrials[index] = {
+    taskId: "T2-D", trialId: trial.id, experimentArm: state.contentArm === 0 ? "A" : "B",
+    feature: trial.feature, featureType: trial.featureType, featureEnabled: featureEnabledFor(index),
+    featureOpened: (state.featureUsageEvents[index] || []).some(item => item.action === "open"), featureMaterialReady: trial.materialReady !== false,
+    audioStartTime: playback.audioStartTime || (state.contentStarts[index] ? new Date(state.contentStarts[index]).toISOString() : ""),
+    q1Answer: data.contentQ1 || "", q1Correct: data.contentQ1 ? data.contentQ1 === trial.q1.correct : null,
+    q2Answer: data.contentQ2 || "", q2Correct: data.contentQ2 ? data.contentQ2 === trial.q2.correct : null,
+    q3EaseRating: data.contentEase ? Number(data.contentEase) : null,
+    q1DurationMs: times.q1AnsweredAt && times.shownAt ? times.q1AnsweredAt - times.shownAt : null,
+    q2DurationMs: times.q2AnsweredAt && times.shownAt ? times.q2AnsweredAt - times.shownAt : null,
+    trialTotalDurationMs: Math.max(0, Date.now() - pageStart),
+    playbackCount: playback.playbackCount || 0,
+    playbackSeekEvents: playback.seekEvents || [],
+    featureUsageEvents: state.featureUsageEvents[index] || [],
+    audioConfigured: Boolean(audioSource(index)),
+    timedOut
+  };
+  log(timedOut ? "content_trial_timeout" : "content_trial_complete", trial.feature, state.answers.contentTrials[index]);
+  if (index === CONTENT_TRIALS.length - 1) {
+    save();
+    contentTrialCompleting = false;
+    goTo("structureIntro");
+    return;
+  }
+  state.contentIndex += 1;
+  state.pageEnteredAt = Date.now();
+  ensureContentTrialTiming();
+  save();
+  contentTrialCompleting = false;
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function bindContentTrialTimer() {
+  stopCountdown();
+  ensureContentTrialTiming();
+  save({ sync: false, touch: false });
+  const timer = document.querySelector("#contentTrialTimer");
+  const deadline = state.contentDeadlines[state.contentIndex];
+  const update = () => {
+    const remainingMs = Math.max(0, deadline - Date.now());
+    const remainingSeconds = Math.ceil(remainingMs / 1000);
+    if (timer) timer.textContent = `${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;
+    if (remainingMs <= 0) completeContentTrial(true);
+  };
+  update();
+  if (state.step === "contentTrial" && !contentTrialCompleting) countdownTimer = window.setInterval(update, 250);
 }
 
 function bindCurrentView() {
   if (state.step === "infoRank") bindRankingInteractions();
-  if (state.step === "contentTrial") bindContentAudio();
+  if (state.step === "contentTrial") {
+    bindContentAudio();
+    bindContentTrialTimer();
+  }
 }
 
 function renderResearcher() {
@@ -1661,7 +1810,7 @@ function answerRows() {
       audioStartTime: trial.audioStartTime, q1DurationMs: trial.q1DurationMs, q2DurationMs: trial.q2DurationMs,
       trialTotalDurationMs: trial.trialTotalDurationMs, playbackCount: trial.playbackCount,
       playbackSeekEvents: trial.playbackSeekEvents || [], featureUsageEvents: trial.featureUsageEvents || [],
-      audioConfigured: trial.audioConfigured
+      audioConfigured: trial.audioConfigured, timedOut: Boolean(trial.timedOut)
     };
     const questionId = trial.trialId || `T2-D0${Number(index) + 1}`;
     add(questionId, "Task 2-D", "q1_answer", trial.q1Answer, trial.q1DurationMs, metadata);
@@ -1768,9 +1917,77 @@ document.querySelector("#accessForm").addEventListener("submit", async event => 
   renderResearcher();
 });
 
+document.addEventListener("mouseover", event => {
+  const target = event.target.closest?.("[data-t3-episode]");
+  if (target && !target.contains(event.relatedTarget)) showTask3Detail(target);
+});
+
+document.addEventListener("mouseout", event => {
+  const target = event.target.closest?.("[data-t3-episode]");
+  if (target && !target.contains(event.relatedTarget)) hideTask3Detail();
+});
+
+document.addEventListener("focusin", event => {
+  const target = event.target.closest?.("[data-t3-episode]");
+  if (target) showTask3Detail(target);
+});
+
+document.addEventListener("focusout", event => {
+  const target = event.target.closest?.("[data-t3-episode]");
+  if (target && !target.contains(event.relatedTarget)) hideTask3Detail();
+});
+
+window.addEventListener("scroll", () => hideTask3Detail(), true);
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && state.step === "structureTrial") hideTask3Detail(true);
+});
+
 document.addEventListener("click", event => {
   const scaleButton = event.target.closest("[data-scale-target]");
   if (scaleButton) setScale(scaleButton.dataset.scaleTarget, scaleButton.dataset.scaleValue);
+
+  const treeToggle = event.target.closest("[data-t3-tree-toggle]");
+  if (treeToggle && state.step === "structureTrial") {
+    const id = treeToggle.dataset.t3TreeToggle;
+    const content = document.querySelector(`[data-t3-tree-content="${CSS.escape(id)}"]`);
+    const open = treeToggle.getAttribute("aria-expanded") === "true";
+    treeToggle.setAttribute("aria-expanded", String(!open));
+    treeToggle.querySelector("span").textContent = open ? "›" : "⌄";
+    if (content) content.hidden = open;
+    log("structure_tree_toggle", id, { open: !open });
+    save();
+    return;
+  }
+
+  const categoryFilter = event.target.closest("[data-t3-filter]");
+  if (categoryFilter && state.step === "structureTrial") {
+    const instance = categoryFilter.dataset.t3Instance;
+    const root = document.querySelector(`[data-t3-category-root="${CSS.escape(instance)}"]`);
+    const category = categoryFilter.dataset.t3Filter;
+    root?.querySelectorAll("[data-t3-filter]").forEach(button => {
+      const active = button === categoryFilter;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+    root?.querySelectorAll("[data-t3-category]").forEach(card => { card.hidden = category !== "全部" && card.dataset.t3Category !== category; });
+    const footer = root?.querySelector(":scope > p");
+    if (footer) footer.textContent = category === "全部" ? `已按主题整理全部 ${root.querySelectorAll("[data-t3-episode]").length} 期节目` : `正在查看「${category}」主题`;
+    if (root) root.scrollTop = 0;
+    log("structure_category_filter", instance, { category });
+    save();
+    return;
+  }
+
+  const task3Episode = event.target.closest("[data-t3-episode]");
+  if (task3Episode && state.step === "structureTrial") {
+    event.stopPropagation();
+    showTask3Detail(task3Episode, true);
+    log("structure_episode_detail", task3Episode.dataset.t3Episode, { instance: task3Episode.closest("[data-t3-instance]")?.dataset.t3Instance || "" });
+    save();
+    return;
+  }
+  if (state.step === "structureTrial" && !event.target.closest("#task3Detail")) hideTask3Detail(true);
 
   const timestampButton = event.target.closest("[data-audio-offset]");
   if (timestampButton && state.step === "contentTrial") {
@@ -2087,42 +2304,7 @@ document.addEventListener("submit", event => {
 
   if (event.target.id === "contentRatingForm") {
     event.preventDefault();
-    if (!state.contentAudioCompleted[state.contentIndex]) return showIncompleteQuestion(`片段 ${state.contentIndex + 1}`, "请先完整播放音频", document.querySelector(".audio-panel"));
-    const data = collectForm(event.target);
-    if (!data.contentQ1) return showIncompleteQuestion("Q1", "请选择答案", event.target.querySelector("input[name='contentQ1']"));
-    if (!data.contentQ2) return showIncompleteQuestion("Q2", "请选择答案", event.target.querySelector("input[name='contentQ2']"));
-    if (!validateScale(["contentEase"], "Q3")) return;
-    state.answers.contentTrials ||= {};
-    const trial = CONTENT_TRIALS[state.contentIndex];
-    const times = state.contentQuestionTimes[state.contentIndex] || {};
-    const playback = state.contentPlayback[state.contentIndex] || { playbackCount: 0, seekEvents: [] };
-    const elapsedMs = Math.max(0, Date.now() - state.contentStarts[state.contentIndex]);
-    state.answers.contentTrials[state.contentIndex] = {
-      taskId: "T2-D", trialId: trial.id, experimentArm: state.contentArm === 0 ? "A" : "B",
-      feature: trial.feature, featureType: trial.featureType, featureEnabled: featureEnabledFor(state.contentIndex),
-      featureOpened: (state.featureUsageEvents[state.contentIndex] || []).some(item => item.action === "open"), featureMaterialReady: trial.materialReady !== false,
-      audioStartTime: playback.audioStartTime || new Date(state.contentStarts[state.contentIndex]).toISOString(),
-      q1Answer: data.contentQ1, q1Correct: data.contentQ1 === trial.q1.correct,
-      q2Answer: data.contentQ2, q2Correct: data.contentQ2 === trial.q2.correct,
-      q3EaseRating: Number(data.contentEase),
-      q1DurationMs: times.q1AnsweredAt && times.shownAt ? times.q1AnsweredAt - times.shownAt : null,
-      q2DurationMs: times.q2AnsweredAt && times.shownAt ? times.q2AnsweredAt - times.shownAt : null,
-      trialTotalDurationMs: elapsedMs,
-      playbackCount: playback.playbackCount || 0,
-      playbackSeekEvents: playback.seekEvents || [],
-      featureUsageEvents: state.featureUsageEvents[state.contentIndex] || [],
-      audioConfigured: Boolean(audioSource(state.contentIndex))
-    };
-    log("content_trial_complete", trial.feature, state.answers.contentTrials[state.contentIndex]);
-    save();
-    if (state.contentIndex === CONTENT_TRIALS.length - 1) goTo("structureIntro");
-    else {
-      state.contentIndex += 1;
-      state.pageEnteredAt = Date.now();
-      save();
-      render();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    completeContentTrial(false);
   }
 
   if (event.target.id === "structureComparisonForm") {
