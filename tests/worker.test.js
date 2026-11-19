@@ -204,6 +204,31 @@ function participantRequest(url, token, body) {
     assert.match(body, /transcript/);
   }
 
+  for (const flag of [false, true, undefined]) {
+    const rows = [];
+    for (const stage of ["Task 2-D", "Task 3"]) {
+      for (const answered of ["full", "partial", "empty"]) {
+        const question_id = `${stage}-${answered}`;
+        const trial = { questionId: question_id };
+        if (flag !== undefined) trial.timedOut = flag;
+        const meta = stage === "Task 2-D" && flag !== undefined ? { timedOut: flag } : {};
+        const state_json = JSON.stringify({ answers: { structureTrials: { 0: trial } } });
+        for (const measure of stage === "Task 2-D" ? ["q1_answer", "q1_correct", "q2_answer", "q2_correct", "q3_ease_rating"] : ["visual_comfort_choice", "understanding_choice"]) {
+          const response = answered === "empty" || (answered === "partial" && measure.startsWith("q2")) ? "" : "A";
+          rows.push({ participant_id: "test", study_version: "v", question_id, stage, measure, response, duration_ms: 60000, metadata: JSON.stringify(meta), state_json });
+        }
+      }
+    }
+    rows.push({ participant_id: "test", question_id: "T1-01", stage: "Task 1", metadata: "{}" });
+    context.testAnswerRows = rows;
+    const csvOutput = await vm.runInContext('exportAnswers({ DB: { prepare: () => ({ all: async () => ({ results: testAnswerRows }) }) } })', context);
+    const expectedFlag = flag === undefined ? "unknown" : String(flag);
+    const lines = csvOutput.trim().split(/\r?\n/);
+    assert.match(lines[0], /"metadata","timed_out"$/);
+    for (const line of lines.slice(1, -1)) assert.ok(line.endsWith(',"' + expectedFlag + '"'));
+    assert.ok(lines.at(-1).endsWith(',""'), "Untimed questions must have a blank flag");
+  }
+
   const asset = await worker.fetch(new Request("https://example.test/index.html"), env);
   assert.equal(asset.status, 200);
   assert.equal(await asset.text(), "site");

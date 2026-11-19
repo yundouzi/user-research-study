@@ -289,14 +289,34 @@ async function syncStudy(request, env) {
   }
 }
 
+function answerTimeout(item) {
+  if (!["Task 2-D", "Task 3"].includes(item.stage)) return "";
+  const metadata = metadataObject(item.metadata);
+  if (typeof metadata.timedOut === "boolean") return metadata.timedOut;
+  const snapshot = metadataObject(item.state_json);
+  const trials = item.stage === "Task 3" ? snapshot.answers?.structureTrials : snapshot.answers?.contentTrials;
+  const trial = Object.values(trials || {}).find(trial =>
+    (trial.questionId || trial.trialId) === item.question_id);
+  return typeof trial?.timedOut === "boolean" ? trial.timedOut : "unknown";
+}
+
 async function exportAnswers(env) {
   const result = await env.DB.prepare(`
-    SELECT participant_id, study_version, question_id, stage, measure, response, duration_ms, metadata
-    FROM answers
-    ORDER BY participant_id, question_id, measure
+    SELECT a.participant_id, a.study_version, a.question_id, a.stage, a.measure, a.response, a.duration_ms, a.metadata,
+      p.state_json
+    FROM answers a LEFT JOIN participants p ON p.participant_id = a.participant_id
+    ORDER BY a.participant_id, a.question_id, a.measure
   `).all();
-  const header = ["participant_id", "study_version", "question_id", "stage", "measure", "response", "duration_ms", "metadata"];
-  return csv([header, ...(result.results || []).map(item => header.map(key => item[key]))]);
+  const header = ["participant_id", "study_version", "question_id", "stage", "measure", "response", "duration_ms", "metadata", "timed_out"];
+  return csv([header, ...(result.results || []).map(item => header.map(key => {
+    if (key === "timed_out") return answerTimeout(item);
+    if (key === "response" && ["q1_correct", "q2_correct"].includes(item.measure)) {
+      const answerMeasure = item.measure.replace("_correct", "_answer");
+      const answer = (result.results || []).find(row => row.participant_id === item.participant_id && row.question_id === item.question_id && row.measure === answerMeasure);
+      if (answer && !answer.response) return "";
+    }
+    return item[key];
+  }))]);
 }
 
 async function exportEvents(env) {

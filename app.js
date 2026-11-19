@@ -1806,10 +1806,10 @@ function csvText(rows) {
 }
 
 function answerRows() {
-  const rows = [["participant_id", "study_version", "question_id", "stage", "measure", "response", "duration_ms", "metadata"]];
-  const add = (questionId, stage, measure, response, durationMs = "", metadata = "") => {
+  const rows = [["participant_id", "study_version", "question_id", "stage", "measure", "response", "duration_ms", "metadata", "timed_out"]];
+  const add = (questionId, stage, measure, response, durationMs = "", metadata = "", timedOut = "") => {
     const normalized = Array.isArray(response) ? response.join(";") : response;
-    rows.push([state.participantId, STUDY_VERSION, questionId, stage, measure, normalized, durationMs, typeof metadata === "string" ? metadata : JSON.stringify(metadata)]);
+    rows.push([state.participantId, STUDY_VERSION, questionId, stage, measure, normalized, durationMs, typeof metadata === "string" ? metadata : JSON.stringify(metadata), timedOut]);
   };
   const profile = state.answers.profile || {};
   add("P1-01", "Pre-interview", "participant_id", state.participantId, profile.durationMs);
@@ -1869,14 +1869,14 @@ function answerRows() {
       audioStartTime: trial.audioStartTime, q1DurationMs: trial.q1DurationMs, q2DurationMs: trial.q2DurationMs,
       trialTotalDurationMs: trial.trialTotalDurationMs, playbackCount: trial.playbackCount,
       playbackSeekEvents: trial.playbackSeekEvents || [], featureUsageEvents: trial.featureUsageEvents || [],
-      audioConfigured: trial.audioConfigured, timedOut: Boolean(trial.timedOut)
+      audioConfigured: trial.audioConfigured, timedOut: typeof trial.timedOut === "boolean" ? trial.timedOut : "unknown"
     };
     const questionId = trial.trialId || `T2-D0${Number(index) + 1}`;
-    add(questionId, "Task 2-D", "q1_answer", trial.q1Answer, trial.q1DurationMs, metadata);
-    add(questionId, "Task 2-D", "q1_correct", trial.q1Correct, trial.q1DurationMs, metadata);
-    add(questionId, "Task 2-D", "q2_answer", trial.q2Answer, trial.q2DurationMs, metadata);
-    add(questionId, "Task 2-D", "q2_correct", trial.q2Correct, trial.q2DurationMs, metadata);
-    add(questionId, "Task 2-D", "q3_ease_rating", trial.q3EaseRating, trial.trialTotalDurationMs, metadata);
+    add(questionId, "Task 2-D", "q1_answer", trial.q1Answer, trial.q1DurationMs, metadata, typeof trial.timedOut === "boolean" ? trial.timedOut : "unknown");
+    add(questionId, "Task 2-D", "q1_correct", trial.q1Answer ? trial.q1Correct : "", trial.q1DurationMs, metadata, typeof trial.timedOut === "boolean" ? trial.timedOut : "unknown");
+    add(questionId, "Task 2-D", "q2_answer", trial.q2Answer, trial.q2DurationMs, metadata, typeof trial.timedOut === "boolean" ? trial.timedOut : "unknown");
+    add(questionId, "Task 2-D", "q2_correct", trial.q2Answer ? trial.q2Correct : "", trial.q2DurationMs, metadata, typeof trial.timedOut === "boolean" ? trial.timedOut : "unknown");
+    add(questionId, "Task 2-D", "q3_ease_rating", trial.q3EaseRating, trial.trialTotalDurationMs, metadata, typeof trial.timedOut === "boolean" ? trial.timedOut : "unknown");
   });
   Object.values(state.answers.structureTrials || {}).sort((a, b) => a.questionId.localeCompare(b.questionId)).forEach(trial => {
     const metadata = {
@@ -1891,8 +1891,8 @@ function answerRows() {
       sideSwapped: trial.sideSwapped,
       layoutArm: trial.layoutArm
     };
-    add(trial.questionId, "Task 3", "visual_comfort_choice", trial.visualChoice, trial.durationMs, metadata);
-    add(trial.questionId, "Task 3", "understanding_choice", trial.understandingChoice, trial.durationMs, { ...metadata, dimensionsAgree: trial.dimensionsAgree });
+    add(trial.questionId, "Task 3", "visual_comfort_choice", trial.visualChoice, trial.durationMs, metadata, typeof trial.timedOut === "boolean" ? trial.timedOut : "unknown");
+    add(trial.questionId, "Task 3", "understanding_choice", trial.understandingChoice, trial.durationMs, { ...metadata, dimensionsAgree: trial.dimensionsAgree }, typeof trial.timedOut === "boolean" ? trial.timedOut : "unknown");
   });
   const interview = state.answers.interview || {};
   add("T4-01", "Task 4", "oral_interview_completed", interview.completed, interview.durationMs);

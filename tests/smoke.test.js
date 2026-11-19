@@ -269,7 +269,7 @@ assert.ok(qa.task2bEpisodes.every(episode => episode.host && episode.guest && ep
 assert.ok(qa.commentMarkup.every(markup => markup.includes("comment-username") && markup.includes("comment-text")), "Task 2-B comments should render usernames and text on separate lines");
 assert.ok(qa.similarMarkup.every(markup => (markup.match(/<span>/g) || []).length === 3), "Each similar podcast recommendation should render on its own line");
 assert.ok(qa.fieldValuesComplete, "Every sourced Task 2-B field must have a value for every episode");
-assert.deepEqual([...qa.answerHeader], ["participant_id", "study_version", "question_id", "stage", "measure", "response", "duration_ms", "metadata"], "Answer CSV must use the analysis-ready schema");
+assert.deepEqual([...qa.answerHeader], ["participant_id", "study_version", "question_id", "stage", "measure", "response", "duration_ms", "metadata", "timed_out"], "Answer CSV must use the analysis-ready schema");
 assert.equal(qa.sampleAnswerRows.length, 80, "Completed study export should contain one header and 79 answer rows");
 assert.ok(qa.sampleAnswerRows.slice(1).every(row => row[2] && row[4] && !row.includes(undefined)), "Every exported answer row must have a question ID, measure, and defined values");
 assert.equal(qa.studyVersion, 8, "Task 2-D redesign should use study version 8");
@@ -361,3 +361,35 @@ assert.equal(context.nextIndex, 1);
 assert.ok(context.nextRemaining > 59000 && context.nextRemaining <= 60000);
 assert.equal(context.finalStep, "interview");
 console.log("Task 3 timer checks passed: persistent deadlines, partial timeout answers, fresh next timer and final progression.");
+
+for (const scenario of [
+  { timedOut: false, q1: "A", q2: "B" },
+  { timedOut: true, q1: "A", q2: "" },
+  { timedOut: true, q1: "", q2: "" },
+  { q1: "", q2: "" }
+]) {
+  context.timeoutScenario = scenario;
+  vm.runInContext(`
+    state.answers.contentTrials = { 0: {
+      trialId: "T2-D01", ...timeoutScenario,
+      q1Answer: timeoutScenario.q1, q2Answer: timeoutScenario.q2,
+      q1Correct: timeoutScenario.q1 ? true : false,
+      q2Correct: timeoutScenario.q2 ? true : false
+    } };
+    state.answers.structureTrials = { 0: {
+      questionId: "T3-01", ...timeoutScenario,
+      visualChoice: timeoutScenario.q1, understandingChoice: timeoutScenario.q2
+    } };
+    globalThis.exportedTimeoutRows = answerRows().slice(1);
+  `, context);
+  const expected = typeof scenario.timedOut === "boolean" ? scenario.timedOut : "unknown";
+  const rows = context.exportedTimeoutRows;
+  assert.equal(rows.filter(r => r[3] === "Task 2-D").length, 5);
+  assert.equal(rows.filter(r => r[3] === "Task 3").length, 2);
+  for (const row of rows) {
+    assert.equal(row[8], ["Task 2-D", "Task 3"].includes(row[3]) ? expected : "");
+    if (row[4] === "q1_correct" && !scenario.q1) assert.equal(row[5], "");
+    if (row[4] === "q2_correct" && !scenario.q2) assert.equal(row[5], "");
+  }
+}
+console.log("Answer timeout export checks passed: normal, partial timeout, unanswered timeout and unknown history.");
