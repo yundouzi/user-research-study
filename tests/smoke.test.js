@@ -469,3 +469,25 @@ assert.ok(context.dictionaryDownload.text.startsWith('"study_version","dictionar
 assert.ok(context.dictionaryDownload.text.includes('"male","男"'));
 assert.equal(context.dictionaryDownload.mime, "text/csv;charset=utf-8");
 console.log("Dictionary CSV download checks passed: researcher access, versioned filename and UTF-8 Chinese labels.");
+
+(async () => {
+  context.TextEncoder = TextEncoder;
+  context.testAccessConfig = {
+    researcherAccessCodeHash: require("node:crypto").createHash("sha256").update("test-access").digest("hex")
+  };
+  assert.equal(await vm.runInContext('matchesResearcherCode("test-access", testAccessConfig)', context), true);
+  assert.equal(await vm.runInContext('matchesResearcherCode("wrong-access", testAccessConfig)', context), false);
+  assert.equal(await vm.runInContext('matchesResearcherCode("", testAccessConfig)', context), false);
+  assert.equal(await vm.runInContext('matchesResearcherCode("local", { researcherAccessCode: "local" })', context), true);
+  assert.equal(await vm.runInContext('matchesResearcherCode("local", {})', context), false);
+  const previousLocation = context.location;
+  context.location = { protocol: "https:", hostname: "yundouzi.github.io" };
+  assert.equal(vm.runInContext('canUseServerAPI()', context), false, "Pages must never offer nonexistent aggregate APIs");
+  context.location = previousLocation;
+  const pagesConfig = fs.readFileSync(path.resolve(__dirname, "..", "pages-config.js"), "utf8");
+  assert.match(pagesConfig, /researcherAccessCodeHash: "[a-f0-9]{64}"/);
+  assert.ok(!/researcherAccessCode\s*:/.test(pagesConfig), "Never publish the plaintext code");
+  const workflow = fs.readFileSync(path.resolve(__dirname, "..", ".github/workflows/pages.yml"), "utf8");
+  assert.ok(workflow.includes("cp pages-config.js _site/config.js"));
+  console.log("Researcher access checks passed: valid/invalid/empty code, local compatibility, Pages API isolation and hashed deployment config.");
+})().catch(error => { console.error(error); process.exitCode = 1; });

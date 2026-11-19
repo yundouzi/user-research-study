@@ -723,7 +723,7 @@ function log(type, target = "", payload = {}) {
 }
 
 function canUseServerAPI() {
-  return !serverSyncUnavailable && ["http:", "https:"].includes(window.location?.protocol || "");
+  return !window.YZH_STUDY_CONFIG?.staticHosting && !window.location?.hostname?.endsWith(".github.io") && !serverSyncUnavailable && ["http:", "https:"].includes(window.location?.protocol || "");
 }
 
 function answerRecords() {
@@ -2017,9 +2017,18 @@ function loadLocalConfig() {
   });
 }
 
+async function matchesResearcherCode(enteredCode, config = window.YZH_STUDY_CONFIG || {}) {
+  if (config.researcherAccessCodeHash) {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(enteredCode));
+    const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+    return hash === config.researcherAccessCodeHash;
+  }
+  return Boolean(config.researcherAccessCode && enteredCode === config.researcherAccessCode);
+}
+
 async function openResearcherAccess() {
   const configured = await loadLocalConfig();
-  document.querySelector("#accessHint").textContent = configured ? "请输入本地研究者访问码。" : canUseServerAPI() ? "请输入 Sites 中配置的研究者访问令牌。" : "尚未找到本地 config.js。请先复制 config.example.js 并设置访问码。";
+  document.querySelector("#accessHint").textContent = configured ? "请输入研究者访问码。GitHub Pages 仅导出当前浏览器的数据。" : canUseServerAPI() ? "请输入 Sites 中配置的研究者访问令牌。" : "尚未找到本地 config.js。请先复制 config.example.js 并设置访问码。";
   accessDialog.showModal();
   window.setTimeout(() => document.querySelector("#accessCode").focus(), 50);
 }
@@ -2030,10 +2039,16 @@ document.querySelector("#researcherButton").addEventListener("click", openResear
 document.querySelector("#accessCancel").addEventListener("click", () => accessDialog.close());
 document.querySelector("#accessForm").addEventListener("submit", async event => {
   event.preventDefault();
-  const configuredCode = window.YZH_STUDY_CONFIG?.researcherAccessCode || "";
+  const hasConfiguredCode = Boolean(window.YZH_STUDY_CONFIG?.researcherAccessCode || window.YZH_STUDY_CONFIG?.researcherAccessCodeHash);
   const enteredCode = document.querySelector("#accessCode").value;
-  if (configuredCode && enteredCode !== configuredCode) return toast("访问码不正确");
-  if (!configuredCode) {
+  if (hasConfiguredCode) {
+    try {
+      if (!await matchesResearcherCode(enteredCode)) return toast("访问码不正确");
+    } catch {
+      return toast("浏览器无法验证访问码，请使用 HTTPS 或本地服务器");
+    }
+  }
+  if (!hasConfiguredCode) {
     if (!canUseServerAPI()) return toast("研究者访问尚未配置");
     try {
       const response = await fetch("/api/research/authorize", {
