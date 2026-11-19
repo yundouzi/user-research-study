@@ -35,6 +35,12 @@ jobs:
           cp index.html app.js styles.css study-materials.js _site/
           cp assets/audio/s8e6.m4a _site/assets/audio/
           cp pages-config.js _site/config.js
+          mkdir -p _site/lite
+          cp index.html _site/lite/index.html
+          cp pages-config.js _site/lite/config.js
+          sed -i 's|href="styles.css"|href="../styles.css"|; s|src="study-materials.js"|src="../study-materials.js"|; s|src="app.js?|src="../app.js?|' _site/lite/index.html
+          sed 's|assets/audio/|../assets/audio/|g' study-materials.js > _site/lite/study-materials.js
+          sed -i 's|src="../study-materials.js"|src="study-materials.js"|' _site/lite/index.html
           touch _site/.nojekyll
 
       - name: Upload website

@@ -1,9 +1,10 @@
 "use strict";
 
-const STORAGE_KEY = "yzhStudyV8State";
-const SESSION_STORAGE_KEY = "yzhStudyV8AnonymousSession";
-const SYNC_QUEUE_KEY = "yzhStudyV8PendingSync";
-const STUDY_VERSION = 8;
+const IS_LITE_STUDY = /\/lite\/?(?:index\.html)?$/.test(window.location?.pathname || "");
+const STUDY_VERSION = IS_LITE_STUDY ? 9 : 8;
+const STORAGE_KEY = `yzhStudyV${STUDY_VERSION}State`;
+const SESSION_STORAGE_KEY = `yzhStudyV${STUDY_VERSION}AnonymousSession`;
+const SYNC_QUEUE_KEY = `yzhStudyV${STUDY_VERSION}PendingSync`;
 const SYNC_ENDPOINT = "/api/study/sync";
 const SESSION_ENDPOINT = "/api/study/session";
 const CONTENT_TRIAL_LIMIT_MS = 2 * 60 * 1000;
@@ -21,7 +22,7 @@ const STEPS = [
   "interview",
   "scenario",
   "complete"
-];
+].filter(step => !IS_LITE_STUDY || !["interview", "scenario"].includes(step));
 
 const STEP_LABELS = {
   intro: "研究说明",
@@ -920,6 +921,7 @@ function resumeTrial(kind, index) {
 }
 
 function goTo(step) {
+  if (IS_LITE_STUDY && ["interview", "scenario"].includes(step)) step = "complete";
   pauseActiveTrial();
   stopCountdown();
   const from = state.step;
@@ -968,11 +970,11 @@ function goBack() {
     structureTrial: "structureIntro",
     interview: "structureTrial",
     scenario: "interview",
-    complete: "scenario"
+    complete: IS_LITE_STUDY ? "structureTrial" : "scenario"
   }[state.step] || "intro";
   if (state.step === "infoRank") state.needsIndex = TASK_ONE_QUESTIONS.length - 1;
   if (state.step === "structureIntro") state.contentIndex = CONTENT_TRIALS.length - 1;
-  if (state.step === "interview") state.structureIndex = state.structureComparisons.length - 1;
+  if (state.step === "interview" || (IS_LITE_STUDY && state.step === "complete")) state.structureIndex = state.structureComparisons.length - 1;
   goTo(previous);
 }
 
@@ -1414,7 +1416,7 @@ function renderComplete() {
     <section class="hero-panel">
       <div class="eyebrow">Study complete</div>
       <h1>谢谢你的参与</h1>
-      <p class="lede">你已经完成需求调查、信息价值测试、12 组结构对比和真实场景任务。</p>
+      <p class="lede">${IS_LITE_STUDY ? "你已经完成需求调查、信息价值测试和12组结构对比。" : "你已经完成需求调查、信息价值测试、12 组结构对比和真实场景任务。"}</p>
       <p>请在关闭页面前告知研究者，并按需要导出本次记录。</p>
       <div class="form-actions" style="justify-content:flex-start"><button class="button" id="exportCSV" type="button">导出答案 CSV</button><button class="button secondary" id="exportEventsCSV" type="button">导出行为日志 CSV</button><button class="button secondary" id="exportJSON" type="button">导出 JSON</button></div>
       <div class="notice" style="margin-top:24px">答题过程会先保存在本机浏览器；在 Sites 环境中还会同步到研究数据库。关闭页面前请确认研究者已完成数据核对。</div>
@@ -1791,7 +1793,7 @@ function completeStructureTrial(timedOut, data = {}) {
 }
 
 function advanceStructureTrial() {
-  if (state.structureIndex === state.structureComparisons.length - 1) goTo("interview");
+  if (state.structureIndex === state.structureComparisons.length - 1) goTo(IS_LITE_STUDY ? "complete" : "interview");
   else {
     state.structureIndex += 1;
     state.pageEnteredAt = Date.now();
@@ -2030,7 +2032,7 @@ function answerRows() {
   add("T4-01", "Task 4", "oral_interview_completed", interview.completed, interview.durationMs);
   const scenario = state.answers.scenario || {};
   add("T4-02", "Task 4", "selected_episode", scenario.episode, scenario.durationMs, { responseMode: "task_and_oral_interview", other: scenario.episodeOther || "" });
-  return rows;
+  return IS_LITE_STUDY ? rows.filter((row, index) => index === 0 || row[3] !== "Task 4") : rows;
 }
 
 // The dictionary describes this questionnaire revision only; never relabel older versions.
@@ -2094,7 +2096,7 @@ function dataDictionaryRows(version = STUDY_VERSION) {
   add("T4-01", "Task 4", "oral_interview_completed", "关于四种结构的看法（口头访谈）", [[true, "口头访谈已完成"], [false, "口头访谈未完成"], ["", "尚无记录"]], "boolean", "不记录口头访谈原文");
   add("*", "*", "*", "是否超时结束", [[true, "达到时限并超时结束"], [false, "时限内正常提交"], ["unknown", "历史数据缺少明确超时记录"], ["", "无时间限制"]], "boolean_or_unknown", "Task 2-D 和 Task 3 同一试次所有行一致；禁止根据 duration_ms 推断", "timed_out");
   add("*", "*", "*", "答案缺失", [["", "未作答或未记录；不自动判错"]], "missing", "区分空白、false 和 unknown；字典只适用于当前 study_version 的本次问卷修订，不追溯解释未核实历史文案");
-  return rows;
+  return IS_LITE_STUDY ? rows.filter((row, index) => index === 0 || row[3] !== "Task 4") : rows;
 }
 
 function exportDataDictionary() {

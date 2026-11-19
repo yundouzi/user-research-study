@@ -33,7 +33,7 @@ const context = {
   },
   setTimeout: () => 1, clearTimeout() {}, setInterval: () => 1, clearInterval() {},
   addEventListener() {}, scrollTo() {}, confirm: () => true,
-  location: { protocol: "file:" }, navigator: {}, YZH_STUDY_MATERIALS: { audioSources: [] }
+  location: { protocol: "file:", pathname: process.env.LITE_STUDY ? "/user-research-study/lite/" : "/user-research-study/" }, navigator: {}, YZH_STUDY_MATERIALS: { audioSources: [] }
 };
 context.window = context;
 vm.createContext(context);
@@ -109,7 +109,21 @@ for (let i = 0; i < 12; i++) {
   assert.equal(run(`state.answers.structureTrials[${i}].aType === state.structureComparisons[${i}].a.type`), true);
 }
 assert.equal(rows().filter(r => r[3] === "Task 3").length, 24);
-assert.equal(run('state.step'), "interview");
+assert.equal(run('state.step'), process.env.LITE_STUDY ? "complete" : "interview");
+if (process.env.LITE_STUDY) {
+  assert.equal(run('STUDY_VERSION'), 9);
+  assert.equal(run('STORAGE_KEY'), "yzhStudyV9State");
+  assert.equal(run('STEPS.length'), 10);
+  assert.ok(rows().every(row => row[3] !== "Task 4"));
+  assert.equal(run('dataDictionaryRows().some(row => row[3] === "Task 4")'), false);
+  assert.equal(run('renderComplete().includes("真实场景任务")'), false);
+  run('goBack()');
+  assert.equal(run('state.step'), "structureTrial");
+  assert.equal(run('state.structureIndex'), 11);
+  run('goTo("interview")');
+  assert.equal(run('state.step'), "complete");
+  console.log("Lite study verified: Task 3 completes study, no Task 4 in answers/dictionary, independent storage and version.");
+}
 // Verify persisted clocks survive a storage reload, and characterize existing edge cases.
 run('state.step = "needs"; state.needsIndex = 0; state.pageEnteredAt = Date.now(); save({sync:false})');
 clock += 6000; run('state = loadState()'); assert.equal(run('pageDuration()'), 6000);

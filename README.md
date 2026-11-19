@@ -73,3 +73,10 @@ python -m http.server 8000
 - 已完成的限时试次返回后只读，继续操作不会覆盖原答案或超时标记。未完成的基本信息、Task 2-D 和 Task 3 答案草稿可在刷新后恢复。
 - 进入研究者视图暂停原任务计时；阶段跳转是只读预览，不写入实验答案。点击“返回参与者视图”恢复原位置和剩余时间。研究者模式下刷新也恢复原任务并排除暂停时间。
 - Task 2-B `selectedFieldIds` 是提交时的信息集合，`viewedFieldIds` 是曾查看的信息集合，`completedAt` 是完成时间。新增字段只对新记录可靠，不能补回此前未保存的历史过程。
+
+## 完整版备份与轻量版
+
+- 完整版：`https://yundouzi.github.io/user-research-study/`，保留 Task 1–4，`study_version=8`。
+- 轻量版：`https://yundouzi.github.io/user-research-study/lite/`，仅移除 Task 4，在第12组 Task 3 后结束；`study_version=9`，答案/字典无 Task 4，独立浏览器存储，不覆盖完整版记录。研究者访问码相同。
+- 修改前完整版备份标签：`backup-full-study-2026-11-19`，对应提交 `db3809779322c12394d1a4eb2ead89677a8da04b`，可在 GitHub Tags 下载或按该标签检出完整源代码和部署配置。
+- 本地检查轻量版可用带 `/lite/` 路径的静态部署产物；回归命令：`LITE_STUDY=1 node tests/recording-audit.test.js`。Pages 工作流自动生成两个入口，共享脚本/样式/音频，保留原有任务条件和长表格式。
