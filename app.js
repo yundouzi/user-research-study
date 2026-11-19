@@ -26,7 +26,7 @@ const STEPS = [
 const STEP_LABELS = {
   intro: "研究说明",
   profile: "参与者信息",
-  needs: "Task 1 · 用户需求",
+  needs: "Task 1 · 收听播客的习惯",
   infoRank: "Task 2 · 信息排序",
   infoReveal: "Task 2 · 逐层揭露",
   contentIntro: "Task 2 · 单集内信息",
@@ -1084,7 +1084,7 @@ function renderNeeds() {
     <input class="text-input other-input" id="${question.otherKey}" name="${question.otherKey}" type="text" maxlength="150" value="${escapeHTML(state.needsResponses?.[question.otherKey] || "")}" placeholder="${question.otherPlaceholder}" aria-label="${question.otherPlaceholder}" ${selectedOther ? "required" : ""}>
   </div>` : "";
   const selectionHint = question.max ? `<small class="muted">（最多选 ${question.max} 项）</small>` : "";
-  return wrap(`${sectionHeader(`Level 1 · Task 1 · ${questionIndex + 1}/8`, "用户的需求", "请根据你平时使用播客平台的真实习惯作答。", `<span class="badge">第 ${questionIndex + 1} 题，共 8 题</span>`)}
+  return wrap(`${sectionHeader(`Task 1 · ${questionIndex + 1}/8`, "收听播客的习惯", "请根据你平时使用播客平台的真实习惯作答。", `<span class="badge">第 ${questionIndex + 1} 题，共 8 题</span>`)}
     <form id="needsQuestionForm" class="narrow task-one-form" data-question-number="${questionIndex + 1}">
       <section class="card question-card">
         <div class="question-title"><span class="question-number">${questionIndex + 1}</span><span>${question.title}${selectionHint}</span></div>
@@ -1167,7 +1167,7 @@ function episodeChoiceHTML(episode) {
 }
 
 function renderInfoReveal() {
-  return wrap(`${sectionHeader("Level 2 · Task 2-B", "选择信息，再选择想听的节目", "你最多可以逐步揭露 3 类信息。观察这些信息是否会改变你的判断。", `<span class="badge warm">已选 ${state.selectedFields.length}/3 类信息</span>`)}
+  return wrap(`${sectionHeader("Task 2-B", "选择信息，再选择想听的节目", "你最多可以逐步揭露 3 类信息。观察这些信息是否会改变你的判断。", `<span class="badge warm">已选 ${state.selectedFields.length}/3 类信息</span>`)}
     <section class="card">
       <h3>第一步：选择你想查看的信息</h3>
       <p class="muted">播客标题会始终显示；其余信息会同时呈现在每一期节目中。</p>
@@ -1204,7 +1204,7 @@ function renderScenario() {
 function renderContentIntro() {
   return wrap(`<div class="hero">
     <section class="hero-panel">
-      <div class="eyebrow">Level 2 · Task 2-D</div>
+      <div class="eyebrow">Task 2-D</div>
       <h1>单集内辅助信息测试</h1>
       <p class="lede">接下来你将收听 5 段约 1 分钟的真实播客音频，并完成内容理解题与主观评价。每段限时 2 分钟。</p>
       <ul class="instruction-list"><li>进入每段后即可查看并回答问题，无需播放完整音频。</li><li>部分片段会提供一种辅助信息，部分片段仅显示音频。</li><li>可重复播放或拖动进度；超时将保存当前作答并进入下一段。</li></ul>
@@ -1270,7 +1270,7 @@ function renderContentTrial() {
 function renderStructureIntro() {
   return wrap(`<div class="hero">
     <section class="hero-panel">
-      <div class="eyebrow">Level 3 · Task 3</div>
+      <div class="eyebrow">Task 3</div>
       <h1>哪一种呈现形式更好？</h1>
       <p class="lede">你将完成 12 组 A/B 对比。每组同时展示两种界面，请先选择视觉上更舒适的一项，再选择更容易理解内容及信息组织的一项。</p>
       <div class="level-strip">
