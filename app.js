@@ -895,7 +895,32 @@ function stopCountdown() {
   countdownTimer = null;
 }
 
+function pauseActiveTrial() {
+  if (state.researchReview || state.researchPreview) return;
+  const kind = state.step === "contentTrial" ? "content" : state.step === "structureTrial" ? "structure" : "";
+  if (!kind) return;
+  const index = kind === "content" ? state.contentIndex : state.structureIndex;
+  if ((kind === "content" ? state.answers.contentTrials : state.answers.structureTrials)?.[index]) return;
+  state.trialPauses ||= {};
+  state.trialPauses[`${kind}-${index}`] ||= Date.now();
+}
+
+function resumeTrial(kind, index) {
+  if (state.researchPreview) return;
+  const key = `${kind}-${index}`;
+  const started = state.trialPauses?.[key];
+  if (!started) return;
+  const paused = Math.max(0, Date.now() - started);
+  if (kind === "content") {
+    for (const field of ["contentTrialPageStarts", "contentDeadlines"]) if (state[field]?.[index]) state[field][index] += paused;
+    const times = state.contentQuestionTimes?.[index];
+    if (times) for (const field of ["shownAt", "q1AnsweredAt", "q2AnsweredAt"]) if (times[field]) times[field] += paused;
+  } else if (state.structureDeadlines?.[index]) state.structureDeadlines[index] += paused;
+  delete state.trialPauses[key];
+}
+
 function goTo(step) {
+  pauseActiveTrial();
   stopCountdown();
   const from = state.step;
   state.step = step;
@@ -909,6 +934,7 @@ function goTo(step) {
 
 function goBack() {
   if (state.step === "intro") return;
+  pauseActiveTrial();
   if (state.step === "needs" && state.needsIndex > 0) {
     state.needsIndex -= 1;
     state.pageEnteredAt = Date.now();
@@ -1242,13 +1268,14 @@ function optionHTML(name, question) {
 }
 
 function ensureContentTrialTiming(index = state.contentIndex) {
+  resumeTrial("content", index);
   const now = Date.now();
   state.contentTrialPageStarts[index] ||= now;
   state.contentDeadlines[index] ||= state.contentTrialPageStarts[index] + CONTENT_TRIAL_LIMIT_MS;
 }
 
 function renderContentTrial() {
-  ensureContentTrialTiming();
+  if (!state.researchPreview && !state.answers.contentTrials?.[state.contentIndex]) ensureContentTrialTiming();
   const trial = CONTENT_TRIALS[state.contentIndex];
   state.contentQuestionTimes[state.contentIndex] ||= { shownAt: Date.now() };
   const enabled = featureEnabledFor(state.contentIndex);
@@ -1347,8 +1374,9 @@ function structureHTML(type, count, instance = `${type}-${count}`) {
 }
 
 function renderStructureTrial() {
+  resumeTrial("structure", state.structureIndex);
   state.structureDeadlines ||= {};
-  state.structureDeadlines[state.structureIndex] ||= Date.now() + 60000;
+  if (!state.researchPreview && !state.answers.structureTrials?.[state.structureIndex]) state.structureDeadlines[state.structureIndex] ||= Date.now() + 60000;
   const comparison = state.structureComparisons[state.structureIndex];
   const aMeta = STRUCTURE_TYPES[comparison.a.type];
   const bMeta = STRUCTURE_TYPES[comparison.b.type];
@@ -1431,13 +1459,20 @@ function render() {
   app.innerHTML = (RENDERERS[state.step] || renderIntro)();
   updateHeader();
   bindCurrentView();
+  if (state.researchPreview) app.insertAdjacentHTML("afterbegin", '<div class="notice">研究者预览：不记录答案或计时。<button type="button" id="returnResearcherPreview">返回研究者视图</button></div>');
   app.focus({ preventScroll: true });
 }
 
 function setScale(target, value) {
   const input = document.querySelector(`#${CSS.escape(target)}`);
   if (!input) return;
+  if (state.researchPreview || state.researchReview || (state.step === "contentTrial" && state.answers.contentTrials?.[state.contentIndex])) return;
   input.value = value;
+  if (state.step === "contentTrial" && target === "contentEase") {
+    state.contentDrafts ||= {};
+    (state.contentDrafts[state.contentIndex] ||= {}).contentEase = String(value);
+    save();
+  }
   document.querySelectorAll(`[data-scale-target="${target}"]`).forEach(button => button.classList.toggle("selected", button.dataset.scaleValue === value));
   log("scale_select", target, { value: Number(value) });
 }
@@ -1651,6 +1686,9 @@ let contentTrialCompleting = false;
 function completeContentTrial(timedOut = false) {
   if (contentTrialCompleting || state.step !== "contentTrial") return;
   const index = state.contentIndex;
+  if (state.researchPreview) return;
+  if (state.answers.contentTrials?.[index]) return advanceContentTrial(index);
+  timedOut = timedOut || Date.now() >= state.contentDeadlines[index];
   const form = document.querySelector("#contentRatingForm");
   if (!form) return;
   const data = collectForm(form);
@@ -1676,7 +1714,9 @@ function completeContentTrial(timedOut = false) {
     q3EaseRating: data.contentEase ? Number(data.contentEase) : null,
     q1DurationMs: times.q1AnsweredAt && times.shownAt ? times.q1AnsweredAt - times.shownAt : null,
     q2DurationMs: times.q2AnsweredAt && times.shownAt ? times.q2AnsweredAt - times.shownAt : null,
-    trialTotalDurationMs: Math.max(0, Date.now() - pageStart),
+    trialTotalDurationMs: Math.min(CONTENT_TRIAL_LIMIT_MS, Math.max(0, Date.now() - pageStart)),
+    wallDurationMs: Math.max(0, Date.now() - pageStart),
+    timerDelayMs: Math.max(0, Date.now() - (state.contentDeadlines[index] || Date.now())),
     playbackCount: playback.playbackCount || 0,
     playbackSeekEvents: playback.seekEvents || [],
     featureUsageEvents: state.featureUsageEvents[index] || [],
@@ -1684,6 +1724,10 @@ function completeContentTrial(timedOut = false) {
     timedOut
   };
   log(timedOut ? "content_trial_timeout" : "content_trial_complete", trial.feature, state.answers.contentTrials[index]);
+  advanceContentTrial(index);
+}
+
+function advanceContentTrial(index) {
   if (index === CONTENT_TRIALS.length - 1) {
     save();
     contentTrialCompleting = false;
@@ -1700,6 +1744,7 @@ function completeContentTrial(timedOut = false) {
 }
 
 function bindContentTrialTimer() {
+  if (state.researchPreview || state.answers.contentTrials?.[state.contentIndex]) return;
   stopCountdown();
   ensureContentTrialTiming();
   save({ sync: false, touch: false });
@@ -1716,7 +1761,9 @@ function bindContentTrialTimer() {
 }
 
 function completeStructureTrial(timedOut, data = {}) {
-  if (state.step !== "structureTrial") return;
+  if (state.step !== "structureTrial" || state.researchPreview) return;
+  if (state.answers.structureTrials?.[state.structureIndex]) return advanceStructureTrial();
+  timedOut = timedOut || Date.now() >= state.structureDeadlines[state.structureIndex];
   stopCountdown();
   const comparison = state.structureComparisons[state.structureIndex];
   state.answers.structureTrials ||= {};
@@ -1740,6 +1787,10 @@ function completeStructureTrial(timedOut, data = {}) {
   };
   log(timedOut ? "structure_comparison_timeout" : "structure_comparison_complete", comparison.id, state.answers.structureTrials[state.structureIndex]);
   save();
+  advanceStructureTrial();
+}
+
+function advanceStructureTrial() {
   if (state.structureIndex === state.structureComparisons.length - 1) goTo("interview");
   else {
     state.structureIndex += 1;
@@ -1751,6 +1802,7 @@ function completeStructureTrial(timedOut, data = {}) {
 }
 
 function bindStructureTrialTimer() {
+  if (state.researchPreview || state.answers.structureTrials?.[state.structureIndex]) return;
   const draft = state.structureDrafts?.[state.structureIndex] || {};
   for (const name of ["visualChoice", "understandingChoice"]) {
     if (["A", "B"].includes(draft[name])) {
@@ -1772,7 +1824,71 @@ function bindStructureTrialTimer() {
   update();
 }
 
+function restoreFormDraft(selector, data) {
+  const form = document.querySelector(selector);
+  if (!form || !data) return;
+  form.querySelectorAll("input, select, textarea").forEach(input => {
+    if (!(input.name in data)) return;
+    const value = data[input.name];
+    if (["radio", "checkbox"].includes(input.type)) input.checked = Array.isArray(value) ? value.includes(input.value) : String(value ?? "") === input.value;
+    else input.value = value ?? "";
+  });
+}
+
+function beginResearchReview() {
+  if (!state.researchReview) {
+    state.researchReview = { startedAt: Date.now(), step: state.step, needsIndex: state.needsIndex, contentIndex: state.contentIndex, structureIndex: state.structureIndex, pageEnteredAt: state.pageEnteredAt };
+    save({ sync: false });
+  }
+}
+
+function endResearchReview() {
+  const review = state.researchReview;
+  if (!review) return;
+  const paused = Math.max(0, Date.now() - review.startedAt);
+  state.step = review.step;
+  state.needsIndex = review.needsIndex;
+  state.contentIndex = review.contentIndex;
+  state.structureIndex = review.structureIndex;
+  state.pageEnteredAt = review.pageEnteredAt + paused;
+  if (review.step === "contentTrial" && !state.answers.contentTrials?.[review.contentIndex]) {
+    for (const field of ["contentTrialPageStarts", "contentDeadlines"]) if (state[field]?.[review.contentIndex]) state[field][review.contentIndex] += paused;
+    const times = state.contentQuestionTimes?.[review.contentIndex];
+    if (times) for (const key of ["shownAt", "q1AnsweredAt", "q2AnsweredAt"]) if (times[key]) times[key] += paused;
+  }
+  if (review.step === "structureTrial" && !state.answers.structureTrials?.[review.structureIndex] && state.structureDeadlines?.[review.structureIndex]) state.structureDeadlines[review.structureIndex] += paused;
+  delete state.researchReview;
+  delete state.researchPreview;
+  save();
+}
+
 function bindCurrentView() {
+  const profileDraft = state.profileDraft || state.answers.profile;
+  restoreFormDraft("#profileForm", profileDraft);
+  if (state.step === "profile" && profileDraft) {
+    for (const [name, field, inputId] of [["platforms", "platformOtherField", "platformOther"], ["podcastTypes", "podcastTypeOtherField", "podcastTypeOther"]]) {
+      const selected = (profileDraft[name] || []).includes("other");
+      const container = document.querySelector(`#${field}`);
+      const input = document.querySelector(`#${inputId}`);
+      if (container) container.hidden = !selected;
+      if (input) input.required = selected;
+    }
+  }
+  const content = state.answers.contentTrials?.[state.contentIndex];
+  restoreFormDraft("#contentRatingForm", state.contentDrafts?.[state.contentIndex] || (content ? { contentQ1: content.q1Answer, contentQ2: content.q2Answer, contentEase: content.q3EaseRating } : null));
+  if (state.step === "contentTrial") {
+    const ease = document.querySelector("#contentEase");
+    if (ease?.value) document.querySelectorAll('[data-scale-target="contentEase"]').forEach(button => button.classList.toggle("selected", button.dataset.scaleValue === String(ease.value)));
+  }
+  const completed = state.step === "contentTrial" ? content : state.step === "structureTrial" ? state.answers.structureTrials?.[state.structureIndex] : null;
+  if (state.researchPreview || completed) {
+    if (completed && state.step === "structureTrial") restoreFormDraft("#structureComparisonForm", completed);
+    document.querySelectorAll("main input, main select, main textarea, main [data-scale-target]").forEach(input => { input.disabled = true; });
+    const timer = document.querySelector(state.step === "contentTrial" ? "#contentTrialTimer" : "#structureTrialTimer");
+    if (timer) timer.textContent = completed ? "已完成" : "预览";
+    if (state.researchPreview) document.querySelectorAll('main button[type="submit"], #rankSubmit, #infoRevealSubmit').forEach(button => { button.disabled = true; });
+    return;
+  }
   if (state.step === "structureTrial") bindStructureTrialTimer();
   if (state.step === "infoRank") bindRankingInteractions();
   if (state.step === "contentTrial") {
@@ -1783,6 +1899,8 @@ function bindCurrentView() {
 
 function renderResearcher() {
   stopCountdown();
+  beginResearchReview();
+  delete state.researchPreview;
   const completedContent = Object.keys(state.answers.contentTrials || {}).length;
   const completedStructures = Object.keys(state.answers.structureTrials || {}).length;
   const aggregateExports = canUseServerAPI() ? `<button class="button" id="researchExportAllAnswers" type="button">导出全部答案 CSV</button><button class="button secondary" id="researchExportTask2DRaw" type="button">导出 Task 2-D 原始记录</button><button class="button secondary" id="researchExportTask2DSummary" type="button">导出 Task 2-D 汇总结果</button><button class="button secondary" id="researchExportTask3" type="button">导出 Task 3 对比 CSV</button><button class="button secondary" id="researchExportAllEvents" type="button">导出全部日志 CSV</button>` : "";
@@ -1832,15 +1950,17 @@ function answerRows() {
   add("P1-08", "Pre-interview", "creation_experience", profile.creationExperience, profile.durationMs);
   add("P1-09", "Pre-interview", "show_familiarity", profile.showFamiliarity, profile.durationMs);
 
-  const needs = state.answers.needs || {};
-  add("T1-01", "Task 1", "listening_preference", needs.listeningPreference, needs.durationMs);
-  add("T1-02", "Task 1", "discovery_start", needs.discoveryStart, needs.durationMs, { other: needs.discoveryStartOther || "" });
-  add("T1-03", "Task 1", "most_wanted_information", needs.mostWantedInfo, needs.durationMs, { other: needs.mostWantedInfoOther || "" });
-  add("T1-07", "Task 1", "information_need", needs.informationNeed, needs.durationMs);
-  add("T1-03-duration", "Task 1", "decision_time", needs.decisionTime, needs.durationMs, { sourceQuestionId: "T1-03", note: "源表中编号重复，导出时添加 duration 后缀" });
-  add("T1-04", "Task 1", "mismatch_action", needs.mismatchAction, needs.durationMs);
-  add("T1-05", "Task 1", "refind_frequency", needs.refindFrequency, needs.durationMs);
-  add("T1-06", "Task 1", "after_listening", needs.afterListening, needs.durationMs);
+  const needs = { ...(state.answers.needs || {}), ...(state.needsResponses || {}) };
+  // Each question is timed independently; missing historical timings remain blank.
+  const needsDuration = index => Number.isFinite(state.needsQuestionDurations?.[index]) ? state.needsQuestionDurations[index] : "";
+  add("T1-01", "Task 1", "listening_preference", needs.listeningPreference, needsDuration(0));
+  add("T1-02", "Task 1", "discovery_start", needs.discoveryStart, needsDuration(1), { other: needs.discoveryStartOther || "" });
+  add("T1-03", "Task 1", "most_wanted_information", needs.mostWantedInfo, needsDuration(2), { other: needs.mostWantedInfoOther || "" });
+  add("T1-07", "Task 1", "information_need", needs.informationNeed, needsDuration(3));
+  add("T1-03-duration", "Task 1", "decision_time", needs.decisionTime, needsDuration(4), { sourceQuestionId: "T1-03", note: "源表中编号重复，导出时添加 duration 后缀" });
+  add("T1-04", "Task 1", "mismatch_action", needs.mismatchAction, needsDuration(5));
+  add("T1-05", "Task 1", "refind_frequency", needs.refindFrequency, needsDuration(6));
+  add("T1-06", "Task 1", "after_listening", needs.afterListening, needsDuration(7));
 
   const ranking = state.answers.infoRanking || {};
   add("T2-E01", "Task 2", "information_ranking", ranking.order, ranking.durationMs, {
@@ -1868,6 +1988,8 @@ function answerRows() {
   }
   const reveal = state.answers.infoReveal || {};
   add("T2-E02", "Task 2", "selected_episode", reveal.episode, reveal.durationMs, {
+    completedAt: reveal.completedAt || "",
+    viewedFieldIds: reveal.viewedFieldIds || [],
     selectedFields: reveal.fields || [],
     selectedFieldIds: reveal.fieldIds || (reveal.fields || []).map(label => INFORMATION_FIELD_IDS[label]).filter(Boolean)
   });
@@ -1877,7 +1999,7 @@ function answerRows() {
       experimentArm: trial.experimentArm, featureType: trial.featureType, feature: trial.feature,
       featureEnabled: trial.featureEnabled, featureOpened: trial.featureOpened, featureMaterialReady: trial.featureMaterialReady,
       audioStartTime: trial.audioStartTime, q1DurationMs: trial.q1DurationMs, q2DurationMs: trial.q2DurationMs,
-      trialTotalDurationMs: trial.trialTotalDurationMs, playbackCount: trial.playbackCount,
+      trialTotalDurationMs: trial.trialTotalDurationMs, wallDurationMs: trial.wallDurationMs, timerDelayMs: trial.timerDelayMs, playbackCount: trial.playbackCount,
       playbackSeekEvents: trial.playbackSeekEvents || [], featureUsageEvents: trial.featureUsageEvents || [],
       audioConfigured: trial.audioConfigured, timedOut: typeof trial.timedOut === "boolean" ? trial.timedOut : "unknown"
     };
@@ -1912,7 +2034,7 @@ function answerRows() {
 }
 
 // The dictionary describes this questionnaire revision only; never relabel older versions.
-const DATA_DICTIONARY_REVISION = "2026-11-19-current-questionnaire";
+const DATA_DICTIONARY_REVISION = "2026-11-19-recording-fixes";
 function dataDictionaryRows(version = STUDY_VERSION) {
   if (version !== STUDY_VERSION) throw new Error("没有此 study_version 的已核实数据字典");
   const rows = [["study_version", "dictionary_revision", "question_id", "stage", "measure", "answer_column", "question_text", "response_code", "response_label", "response_type", "notes"]];
@@ -1938,7 +2060,7 @@ function dataDictionaryRows(version = STUDY_VERSION) {
   const needs = [["T1-01", "listening_preference"], ["T1-02", "discovery_start"], ["T1-03", "most_wanted_information"], ["T1-07", "information_need"], ["T1-03-duration", "decision_time"], ["T1-04", "mismatch_action"], ["T1-05", "refind_frequency"], ["T1-06", "after_listening"]];
   TASK_ONE_QUESTIONS.forEach((q, index) => {
     const [id, measure] = needs[index];
-    add(id, "Task 1", measure, q.title, q.options, q.type === "checkbox" ? "multi" : "single", "题号沿用答案表；多选以分号分隔，其他文本见 metadata.other；duration_ms 为整个 Task 1 用时，不可逐行相加");
+    add(id, "Task 1", measure, q.title, q.options, q.type === "checkbox" ? "multi" : "single", "题号沿用答案表；多选以分号分隔，其他文本见 metadata.other；duration_ms 为对应题目最近一次提交的独立用时；历史无独立计时则留空");
   });
   const rankOptions = RANKING_FIELDS.map(field => [field.id, field.label]);
   add("T2-E01", "Task 2", "information_ranking", "哪些播客信息对你最有帮助？", rankOptions, "ordered_multi", "分号分隔的顺序即名次，从最有帮助到最没有帮助");
@@ -1951,6 +2073,7 @@ function dataDictionaryRows(version = STUDY_VERSION) {
     add(id, stage, "selected_episode", text, options, "single", stage === "Task 2" ? "metadata.selectedFieldIds 是查看的信息种类" : "其他节目文本见 metadata.other");
   }
   add("T2-E02", "Task 2", "selected_episode", "查看的信息种类", rankOptions, "multi", "JSON 数组，不是 response 中的节目答案", "metadata.selectedFieldIds");
+  add("T2-E02", "Task 2", "selected_episode", "曾查看的信息种类", rankOptions, "multi", "包括查看后取消的信息；历史缺失不推断", "metadata.viewedFieldIds");
   for (const trial of CONTENT_TRIALS) {
     for (const key of ["q1", "q2"]) {
       const q = trial[key];
@@ -2097,6 +2220,7 @@ document.addEventListener("keydown", event => {
 });
 
 document.addEventListener("click", event => {
+  if (state.researchPreview && !["returnResearcherPreview", "backButton", "researcherButton"].includes(event.target.id)) return;
   const scaleButton = event.target.closest("[data-scale-target]");
   if (scaleButton) setScale(scaleButton.dataset.scaleTarget, scaleButton.dataset.scaleValue);
 
@@ -2214,6 +2338,10 @@ document.addEventListener("click", event => {
     if (existingIndex >= 0) state.selectedFields.splice(existingIndex, 1);
     else if (state.selectedFields.length < 3) state.selectedFields.push(field);
     else return toast("最多同时查看 3 类信息");
+    if (existingIndex < 0) {
+      state.viewedInformationFields ||= [];
+      if (!state.viewedInformationFields.includes(field)) state.viewedInformationFields.push(field);
+    }
     log("information_toggle", field, { selected: existingIndex < 0, current: [...state.selectedFields] });
     save();
     render();
@@ -2241,7 +2369,9 @@ document.addEventListener("click", event => {
     state.answers.infoReveal = {
       fields: state.selectedFields.map(id => INFORMATION_LABELS[id]),
       fieldIds: [...state.selectedFields],
+      viewedFieldIds: [...new Set([...(state.viewedInformationFields || []), ...state.selectedFields])],
       episode: state.selectedEpisode,
+      completedAt: new Date().toISOString(),
       durationMs: pageDuration()
     };
     log("info_reveal_complete", state.selectedEpisode, state.answers.infoReveal);
@@ -2287,7 +2417,8 @@ document.addEventListener("click", event => {
   if (event.target.id === "researchExportTask2DSummary") exportAggregateCSV("task2d-summary");
   if (event.target.id === "researchExportTask3") exportAggregateCSV("task3");
   if (event.target.id === "researchExportAllEvents") exportAggregateCSV("events");
-  if (event.target.id === "returnParticipant") render();
+  if (event.target.id === "returnParticipant") { endResearchReview(); render(); }
+  if (event.target.id === "returnResearcherPreview") renderResearcher();
   if (event.target.id === "markInterrupted") {
     state.answers.interrupted = { step: state.step, timestamp: new Date().toISOString() };
     log("interruption_marked", state.step);
@@ -2295,6 +2426,8 @@ document.addEventListener("click", event => {
   }
   const jumpButton = event.target.closest("[data-research-jump]");
   if (jumpButton) {
+    beginResearchReview();
+    state.researchPreview = true;
     if (jumpButton.dataset.researchJump === "contentTrial") state.contentIndex = 0;
     if (jumpButton.dataset.researchJump === "structureTrial") state.structureIndex = 0;
     goTo(jumpButton.dataset.researchJump);
@@ -2329,7 +2462,24 @@ document.addEventListener("invalid", event => {
   showIncompleteQuestion(questionNumber, "请选择或填写答案", event.target);
 }, true);
 
+document.addEventListener("input", event => {
+  if (state.researchPreview || state.researchReview) return;
+  if (state.step === "profile" && event.target.name) {
+    const form = document.querySelector("#profileForm");
+    const data = new FormData(form);
+    state.profileDraft = Object.fromEntries(data.entries());
+    for (const name of ["platforms", "podcastTypes", "listeningScenes"]) state.profileDraft[name] = data.getAll(name);
+    save();
+  }
+});
+
 document.addEventListener("change", event => {
+  if (state.researchPreview || state.researchReview) return;
+  if (state.step === "contentTrial" && !state.answers.contentTrials?.[state.contentIndex] && ["contentQ1", "contentQ2"].includes(event.target.name)) {
+    state.contentDrafts ||= {};
+    (state.contentDrafts[state.contentIndex] ||= {})[event.target.name] = event.target.value;
+    save();
+  }
   if (state.step === "structureTrial" && ["visualChoice", "understandingChoice"].includes(event.target.name)) {
     state.structureDrafts ||= {};
     const draft = state.structureDrafts[state.structureIndex] ||= {};
@@ -2382,6 +2532,7 @@ document.addEventListener("change", event => {
 });
 
 document.addEventListener("submit", event => {
+  if (state.researchPreview || state.researchReview) { event.preventDefault(); return; }
   if (event.target.id === "profileForm") {
     event.preventDefault();
     const formData = new FormData(event.target);
@@ -2411,6 +2562,7 @@ document.addEventListener("submit", event => {
       showFamiliarity: formData.get("showFamiliarity"),
       durationMs: pageDuration()
     };
+    state.profileDraft = { ...state.answers.profile };
     log("profile_complete", "", state.answers.profile);
     save();
     state.needsIndex = 0;
@@ -2475,6 +2627,7 @@ document.addEventListener("submit", event => {
 
 });
 
+if (state.researchReview) endResearchReview();
 save();
 log("session_open", state.participantId, { version: STUDY_VERSION });
 render();
