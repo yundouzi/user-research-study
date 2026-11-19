@@ -66,7 +66,7 @@ const TASK_ONE_QUESTIONS = [
     options: [["exit","A. 立即退出"],["seek","B. 跳到其他时间位置继续尝试"],["speed","C. 加速收听"],["finish","D. 仍然继续听完"],["rare","E. 很少出现这种情况"]]
   },
   {
-    key: "refindFrequency", type: "radio", title: "有一期播客你非常喜欢，你是否试图回溯找到其中某一句言论或观点？",
+    key: "refindFrequency", type: "radio", title: "你是否曾想重新找到之前在播客中听过的一句话、某个观点或某段讨论？",
     options: [["often","A. 经常"],["sometimes","B. 偶尔"],["rarely","C. 很少"],["never","D. 从未"]]
   },
   {
@@ -1114,7 +1114,7 @@ function renderInfoRank() {
     </div>`;
   }).join("") : `<div class="ranking-axis-empty">将标签拖到这里，或点击上方标签后选择放置位置</div>`;
   const placements = selectedId ? `<div class="ranking-placement-panel"><span>将“${fieldFor(selectedId).label}”放在：</span><div>${Array.from({ length: placementCount }, (_, index) => `<button type="button" data-ranking-place="${index}" aria-label="放在第 ${index + 1} 位">第 ${index + 1} 位</button>`).join("")}</div></div>` : "";
-  return wrap(`${sectionHeader("Task 2-A · 信息偏好", "哪些播客信息对你最有帮助？", "假设你发现了一集感兴趣、但还没有听过的播客。在决定是否收听之前，你认为哪些信息最能帮助你作出判断？请将以下9项信息拖入排序区域，按照从最有帮助到最没有帮助的顺序排列。", `<span class="badge">已排列 ${rankedIds.length}/9 项</span>`)}
+  return wrap(`${sectionHeader("Task 2-A · 信息偏好", "哪些播客信息对你最有帮助？", "假设你发现了一集感兴趣、但还没有听过的播客。<br>在决定是否收听之前，你认为哪些信息最能帮助你作出判断？<br>请将以下9项信息拖入排序区域，按照从最有帮助到最没有帮助的顺序排列。", `<span class="badge">已排列 ${rankedIds.length}/9 项</span>`)}
     <section class="card ranking-workspace">
       <div class="ranking-pool" id="rankingPool" data-ranking-pool>
         <div class="ranking-region-head"><h2>待排序的信息</h2><span>已排列 ${rankedIds.length}/9 项</span></div>
@@ -1167,7 +1167,7 @@ function episodeChoiceHTML(episode) {
 }
 
 function renderInfoReveal() {
-  return wrap(`${sectionHeader("Task 2-B", "选择信息，再选择想听的节目", "你最多可以逐步揭露 3 类信息。观察这些信息是否会改变你的判断。", `<span class="badge warm">已选 ${state.selectedFields.length}/3 类信息</span>`)}
+  return wrap(`${sectionHeader("Task 2-B", "你最想听哪一期播客？", "你可以选择查看最多3种信息。了解这些节目后，选出你最感兴趣的一期播客。", `<span class="badge warm">已选 ${state.selectedFields.length}/3 类信息</span>`)}
     <section class="card">
       <h3>第一步：选择你想查看的信息</h3>
       <p class="muted">播客标题会始终显示；其余信息会同时呈现在每一期节目中。</p>
@@ -1205,13 +1205,12 @@ function renderContentIntro() {
   return wrap(`<div class="hero">
     <section class="hero-panel">
       <div class="eyebrow">Task 2-D</div>
-      <h1>单集内辅助信息测试</h1>
-      <p class="lede">接下来你将收听 5 段约 1 分钟的真实播客音频，并完成内容理解题与主观评价。每段限时 2 分钟。</p>
-      <ul class="instruction-list"><li>进入每段后即可查看并回答问题，无需播放完整音频。</li><li>部分片段会提供一种辅助信息，部分片段仅显示音频。</li><li>可重复播放或拖动进度；超时将保存当前作答并进入下一段。</li></ul>
-      <div class="notice">页面不会显示正确答案或即时得分。请按照自己的理解作答。</div>
+      <h1>辅助信息测试</h1>
+      <p class="lede">接下来你将收听5段约1分钟的播客音频，完成相应测试题和评价。每段限时2分钟。</p>
+      <ul class="instruction-list"><li>部分片段会提供一种辅助信息，部分片段仅显示音频。</li><li>超过2分钟将保存当前作答并进入下一部分</li></ul>
       <div class="form-actions"><button class="button" id="contentBegin" type="button">开始第 1 个片段</button></div>
     </section>
-    <aside class="hero-art"><div class="hero-art-copy"><span>5 段音频</span><strong>A / B 对照</strong></div></aside>
+    <aside class="hero-art"><div class="hero-art-copy"><span>5 段音频</span><strong>2min测试</strong></div></aside>
   </div>`);
 }
 
