@@ -1009,6 +1009,16 @@ function limitedCheckboxChoices(name, options, limit, counterId) {
   return `<div class="choice-list two-columns">${options.map(([value, label]) => `<label class="choice"><input type="checkbox" name="${name}" value="${value}" data-choice-limit="${limit}" data-choice-group="${name}" data-counter-id="${counterId}"><span>${label}</span></label>`).join("")}</div><p class="helper" id="${counterId}">已选 0/${limit}</p>`;
 }
 
+const PROFILE_OPTIONS = {
+  gender: [["male","男"],["female","女"]],
+  listeningFrequency: [["almostDaily","几乎每天"],["weekly3to5","每周 3—5 次"],["weekly1to2","每周 1—2 次"],["monthly1to3","每月 1—3 次"],["rarely","很少收听"]],
+  platforms: [["ximalaya","喜马拉雅"],["xiaoyuzhou","小宇宙"],["apple","Apple 播客"],["youtube","YouTube"],["other","其他"]],
+  podcastTypes: [["business","商业"],["growthCareer","自我成长与职业探索"],["society","社会"],["stories","故事奇谈"],["humanitiesHistory","人文历史"],["technology","科技"],["health","医疗健康"],["foodLife","饮食生活"],["art","艺术"],["music","音乐"],["casualTalk","趣味闲谈"],["other","其他"]],
+  listeningScenes: [["commute","通勤"],["housework","家务"],["exercise","运动"],["walking","散步"],["workStudy","工作或学习"],["beforeSleep","睡前"],["dedicated","安排专门时间认真收听"]],
+  creationExperience: [["yes","有"],["no","没有"]],
+  showFamiliarity: [["everyEpisode","每期都听"],["moreThanFive","听过 5 期以上"],["twoToFive","听过 2—5 期"],["oneOrTwo","听过一两次"],["never","没听过"]]
+};
+
 function renderProfile() {
   return wrap(`${sectionHeader("Before all tasks", "参与者基本信息", "", `<span class="badge">约 3 分钟</span>`)}
     <form id="profileForm" class="narrow">
@@ -1018,7 +1028,7 @@ function renderProfile() {
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">1</span><span>性别</span></div>
-        ${radioChoices("gender", [["male","男"],["female","女"]])}
+        ${radioChoices("gender", PROFILE_OPTIONS.gender)}
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">2</span><span>年龄</span></div>
@@ -1026,33 +1036,33 @@ function renderProfile() {
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">3</span><span>播客收听频率</span></div>
-        ${radioChoices("listeningFrequency", [["almostDaily","几乎每天"],["weekly3to5","每周 3—5 次"],["weekly1to2","每周 1—2 次"],["monthly1to3","每月 1—3 次"],["rarely","很少收听"]])}
+        ${radioChoices("listeningFrequency", PROFILE_OPTIONS.listeningFrequency)}
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">4</span><span>常用播客平台 <small class="muted">（可多选）</small></span></div>
-        ${checkboxChoices("platforms", [["ximalaya","喜马拉雅"],["xiaoyuzhou","小宇宙"],["apple","Apple 播客"],["youtube","YouTube"],["other","其他"]])}
+        ${checkboxChoices("platforms", PROFILE_OPTIONS.platforms)}
         <div class="conditional-other-field" id="platformOtherField" hidden>
           <input class="text-input other-input" id="platformOther" name="platformOther" type="text" maxlength="100" placeholder="请填写其他平台" aria-label="请填写其他平台">
         </div>
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">5</span><span>常听的播客类型 <small class="muted">（最多选 3 项）</small></span></div>
-        ${limitedCheckboxChoices("podcastTypes", [["business","商业"],["growthCareer","自我成长与职业探索"],["society","社会"],["stories","故事奇谈"],["humanitiesHistory","人文历史"],["technology","科技"],["health","医疗健康"],["foodLife","饮食生活"],["art","艺术"],["music","音乐"],["casualTalk","趣味闲谈"],["other","其他"]], 3, "podcastTypeCount")}
+        ${limitedCheckboxChoices("podcastTypes", PROFILE_OPTIONS.podcastTypes, 3, "podcastTypeCount")}
         <div class="conditional-other-field" id="podcastTypeOtherField" hidden>
           <input class="text-input other-input" id="podcastTypeOther" name="podcastTypeOther" type="text" maxlength="100" placeholder="请填写其他播客类型" aria-label="请填写其他播客类型">
         </div>
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">6</span><span>收听播客的场景 <small class="muted">（最多选 3 项）</small></span></div>
-        ${limitedCheckboxChoices("listeningScenes", [["commute","通勤"],["housework","家务"],["exercise","运动"],["walking","散步"],["workStudy","工作或学习"],["beforeSleep","睡前"],["dedicated","安排专门时间认真收听"]], 3, "listeningSceneCount")}
+        ${limitedCheckboxChoices("listeningScenes", PROFILE_OPTIONS.listeningScenes, 3, "listeningSceneCount")}
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">7</span><span>是否有播客创作经验</span></div>
-        ${radioChoices("creationExperience", [["yes","有"],["no","没有"]])}
+        ${radioChoices("creationExperience", PROFILE_OPTIONS.creationExperience)}
       </section>
       <section class="card question-card">
         <div class="question-title"><span class="question-number">8</span><span>对《岩中花述》的熟悉程度</span></div>
-        ${radioChoices("showFamiliarity", [["everyEpisode","每期都听"],["moreThanFive","听过 5 期以上"],["twoToFive","听过 2—5 期"],["oneOrTwo","听过一两次"],["never","没听过"]])}
+        ${radioChoices("showFamiliarity", PROFILE_OPTIONS.showFamiliarity)}
       </section>
       <div class="form-actions"><button class="button" type="submit">提交并开始 Task 1</button></div>
     </form>`);
@@ -1778,7 +1788,7 @@ function renderResearcher() {
   const aggregateExports = canUseServerAPI() ? `<button class="button" id="researchExportAllAnswers" type="button">导出全部答案 CSV</button><button class="button secondary" id="researchExportTask2DRaw" type="button">导出 Task 2-D 原始记录</button><button class="button secondary" id="researchExportTask2DSummary" type="button">导出 Task 2-D 汇总结果</button><button class="button secondary" id="researchExportTask3" type="button">导出 Task 3 对比 CSV</button><button class="button secondary" id="researchExportAllEvents" type="button">导出全部日志 CSV</button>` : "";
   app.innerHTML = wrap(`${sectionHeader("Researcher console", "研究执行台", `当前参与者：${state.participantId}`, `<span class="badge dark">${STEP_LABELS[state.step]}</span>`)}
     <div class="research-grid">
-      <aside class="card research-nav"><button class="button secondary" id="returnParticipant" type="button">← 返回参与者视图</button><button class="button" id="researchExportCSV" type="button">导出本参与者答案 CSV</button><button class="button secondary" id="researchExportEventsCSV" type="button">导出本参与者日志 CSV</button><button class="button secondary" id="researchExportJSON" type="button">导出本参与者 JSON</button>${aggregateExports}<button class="button secondary" id="markInterrupted" type="button">标记异常中断</button></aside>
+      <aside class="card research-nav"><button class="button secondary" id="returnParticipant" type="button">← 返回参与者视图</button><button class="button" id="researchExportCSV" type="button">导出本参与者答案 CSV</button><button class="button secondary" id="researchExportEventsCSV" type="button">导出本参与者日志 CSV</button><button class="button secondary" id="researchExportDictionary" type="button">导出数据字典 CSV</button><button class="button secondary" id="researchExportJSON" type="button">导出本参与者 JSON</button>${aggregateExports}<button class="button secondary" id="markInterrupted" type="button">标记异常中断</button></aside>
       <div>
         <div class="stats"><div class="stat"><span>事件数</span><b>${state.events.length}</b></div><div class="stat"><span>单集内测试</span><b>${completedContent}/5</b></div><div class="stat"><span>结构对比</span><b>${completedStructures}/12</b></div></div>
         <section class="card"><h2>阶段跳转</h2><div class="jump-grid">${STEPS.map((step, index) => `<button class="jump-button" type="button" data-research-jump="${step}">${index + 1}. ${STEP_LABELS[step]}</button>`).join("")}</div></section>
@@ -1899,6 +1909,74 @@ function answerRows() {
   const scenario = state.answers.scenario || {};
   add("T4-02", "Task 4", "selected_episode", scenario.episode, scenario.durationMs, { responseMode: "task_and_oral_interview", other: scenario.episodeOther || "" });
   return rows;
+}
+
+// The dictionary describes this questionnaire revision only; never relabel older versions.
+const DATA_DICTIONARY_REVISION = "2026-11-19-current-questionnaire";
+function dataDictionaryRows(version = STUDY_VERSION) {
+  if (version !== STUDY_VERSION) throw new Error("没有此 study_version 的已核实数据字典");
+  const rows = [["study_version", "dictionary_revision", "question_id", "stage", "measure", "answer_column", "question_text", "response_code", "response_label", "response_type", "notes"]];
+  const add = (id, stage, measure, text, options, type = "single", notes = "", column = "response") => {
+    for (const [code, label] of options) rows.push([version, DATA_DICTIONARY_REVISION, id, stage, measure, column, text, code, label, type, notes]);
+  };
+  const dynamic = (id, stage, measure, text, type, notes) => add(id, stage, measure, text, [["", "按实际填写值读取"]], type, notes);
+  const profile = [
+    ["P1-01", "participant_id", "参与者编号", null, "identifier"],
+    ["P1-02", "gender", "性别", "gender"],
+    ["P1-03", "age", "年龄", null, "number"],
+    ["P1-04", "listening_frequency", "播客收听频率", "listeningFrequency"],
+    ["P1-05", "platforms", "常用播客平台", "platforms", "multi"],
+    ["P1-06", "podcast_types", "常听的播客类型", "podcastTypes", "multi"],
+    ["P1-06.5", "listening_scenes", "收听播客的场景", "listeningScenes", "multi"],
+    ["P1-08", "creation_experience", "是否有播客创作经验", "creationExperience"],
+    ["P1-09", "show_familiarity", "对《岩中花述》的熟悉程度", "showFamiliarity"]
+  ];
+  for (const [id, measure, text, key, type = "single"] of profile) {
+    if (key) add(id, "Pre-interview", measure, text, PROFILE_OPTIONS[key], type, type === "multi" ? "多选代码以分号分隔；其他文本见 metadata.other" : "");
+    else dynamic(id, "Pre-interview", measure, text, type, "编号为匿名标识；年龄单位为岁");
+  }
+  const needs = [["T1-01", "listening_preference"], ["T1-02", "discovery_start"], ["T1-03", "most_wanted_information"], ["T1-07", "information_need"], ["T1-03-duration", "decision_time"], ["T1-04", "mismatch_action"], ["T1-05", "refind_frequency"], ["T1-06", "after_listening"]];
+  TASK_ONE_QUESTIONS.forEach((q, index) => {
+    const [id, measure] = needs[index];
+    add(id, "Task 1", measure, q.title, q.options, q.type === "checkbox" ? "multi" : "single", "题号沿用答案表；多选以分号分隔，其他文本见 metadata.other；duration_ms 为整个 Task 1 用时，不可逐行相加");
+  });
+  const rankOptions = RANKING_FIELDS.map(field => [field.id, field.label]);
+  add("T2-E01", "Task 2", "information_ranking", "哪些播客信息对你最有帮助？", rankOptions, "ordered_multi", "分号分隔的顺序即名次，从最有帮助到最没有帮助");
+  for (const field of RANKING_FIELDS) add(`T2-E01-${field.id}`, "Task 2", "information_rank", `哪些播客信息对你最有帮助？——${field.label}`, Array.from({ length: 9 }, (_, i) => [i + 1, `第${i + 1}名`]), "rank", "1 最有帮助；9 最没有帮助；metadata.initialPosition 为初始位置");
+  // A retained legacy ranking may coexist with the current answer. Do not invent its historic options.
+  dynamic("T2-E01-legacy", "Task 2", "legacy_information_ranking", "历史信息排序（保留记录）", "legacy", "旧版题目和选项未核实；原始值保留，不按当前题目解释");
+  for (const [id, stage, text] of [["T2-E02", "Task 2", "你最想听哪一期播客？"], ["T4-02", "Task 4", "你最终选择了哪一期？"]]) {
+    const options = EPISODES.map(episode => [episode.id, `${episode.id} 鲁豫对话${episode.guest}｜${episode.title}`]);
+    if (stage === "Task 4") options.push(["other", "其他"]);
+    add(id, stage, "selected_episode", text, options, "single", stage === "Task 2" ? "metadata.selectedFieldIds 是查看的信息种类" : "其他节目文本见 metadata.other");
+  }
+  add("T2-E02", "Task 2", "selected_episode", "查看的信息种类", rankOptions, "multi", "JSON 数组，不是 response 中的节目答案", "metadata.selectedFieldIds");
+  for (const trial of CONTENT_TRIALS) {
+    for (const key of ["q1", "q2"]) {
+      const q = trial[key];
+      add(trial.id, "Task 2-D", `${key}_answer`, q.text, q.options, "single", `辅助信息：${trial.feature}；正确选项：${q.correct}；未作答为空`);
+      add(trial.id, "Task 2-D", `${key}_correct`, q.text, [[true, "正确"], [false, "错误"], ["", "未作答或无法判定"]], "boolean", "未作答不计为错误");
+    }
+    add(trial.id, "Task 2-D", "q3_ease_rating", "在刚才的任务中，你觉得理解内容并找到问题答案有多容易？", Array.from({ length: 7 }, (_, i) => [i + 1, i === 0 ? "1 非常困难" : i === 6 ? "7 非常容易" : `${i + 1}（无单独文字标签）`]), "scale", "未作答为空；每段限时120秒");
+    add(trial.id, "Task 2-D", "*", "辅助信息类型", [[trial.featureType, trial.feature]], "single", "适用于本试次全部指标行", "metadata.featureType");
+    add(trial.id, "Task 2-D", "*", "实验分组", [["A", "奇数片段提供辅助信息"], ["B", "偶数片段提供辅助信息"]], "single", "分组不等于某段实际使用辅助信息；见 featureEnabled / featureOpened", "metadata.experimentArm");
+  }
+  for (const comparison of STRUCTURE_COMPARISONS) {
+    const canonical = `标准组合：A=${STRUCTURE_TYPES[comparison.a.type].label}${comparison.a.count}期；B=${STRUCTURE_TYPES[comparison.b.type].label}${comparison.b.count}期。实际左右位置可能反转，以 metadata.displayAType/displayACount/displayBType/displayBCount 为准`;
+    for (const [measure, text] of [["visual_comfort_choice", "哪个界面在第一眼看上去更舒适？"], ["understanding_choice", "哪一个界面更容易找到喜欢的播客？"]]) {
+      add(comparison.id, "Task 3", measure, text, [["A", "屏幕左侧 A 界面"], ["B", "屏幕右侧 B 界面"]], "single", canonical + "；未作答为空；每组限时60秒");
+    }
+    for (const column of ["metadata.displayAType", "metadata.displayBType", "metadata.canonicalAType", "metadata.canonicalBType"]) add(comparison.id, "Task 3", "*", "界面组织形式", Object.entries(STRUCTURE_TYPES).map(([code, item]) => [code, item.label]), "single", canonical, column);
+  }
+  add("T4-01", "Task 4", "oral_interview_completed", "关于四种结构的看法（口头访谈）", [[true, "口头访谈已完成"], [false, "口头访谈未完成"], ["", "尚无记录"]], "boolean", "不记录口头访谈原文");
+  add("*", "*", "*", "是否超时结束", [[true, "达到时限并超时结束"], [false, "时限内正常提交"], ["unknown", "历史数据缺少明确超时记录"], ["", "无时间限制"]], "boolean_or_unknown", "Task 2-D 和 Task 3 同一试次所有行一致；禁止根据 duration_ms 推断", "timed_out");
+  add("*", "*", "*", "答案缺失", [["", "未作答或未记录；不自动判错"]], "missing", "区分空白、false 和 unknown；字典只适用于当前 study_version 的本次问卷修订，不追溯解释未核实历史文案");
+  return rows;
+}
+
+function exportDataDictionary() {
+  if (!researcherSessionToken) return toast("请先验证研究者访问权限");
+  download(`study-${STUDY_VERSION}-data-dictionary.csv`, csvText(dataDictionaryRows()), "text/csv;charset=utf-8");
 }
 
 function exportCSV() {
@@ -2187,6 +2265,7 @@ document.addEventListener("click", event => {
   if (event.target.id === "exportCSV" || event.target.id === "researchExportCSV") exportCSV();
   if (event.target.id === "exportEventsCSV" || event.target.id === "researchExportEventsCSV") exportEventsCSV();
   if (event.target.id === "exportJSON" || event.target.id === "researchExportJSON") exportJSON();
+  if (event.target.id === "researchExportDictionary" && researcherSessionToken) exportDataDictionary();
   if (event.target.id === "researchExportAllAnswers") exportAggregateCSV("answers");
   if (event.target.id === "researchExportTask2DRaw") exportAggregateCSV("task2d-raw");
   if (event.target.id === "researchExportTask2DSummary") exportAggregateCSV("task2d-summary");

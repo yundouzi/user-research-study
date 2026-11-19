@@ -36,6 +36,10 @@ python -m http.server 8000
 - “答案 CSV”按题号输出结构化答案，便于统计分析。
 - “行为日志 CSV”记录页面操作与时间戳。
 - JSON 保留完整状态、答案与事件。
+- 研究者视图提供“导出数据字典 CSV”，独立于原有统一答案 CSV，不生成实验宽表，也不改变参与者流程。
+- 数据字典每行映射 `study_version + question_id + measure + answer_column + response_code` 到中文题目和选项；多选答案按分号拆分后查表。`answer_column` 通常为 `response`，也说明 `timed_out` 和用于解释实验条件的 metadata 字段；`*` 表示通用规则或试次内全部指标。
+- 字典附带 `dictionary_revision`：当前问卷仍使用 `study_version=8`，此前同版本内曾修改文案，因此当前字典只核实当前修订，不保证还原同版本历史措辞。未核实的旧排序单独标为历史记录，不套用当前选项。后续修改题意或编码时应保留旧字典并明确版本，避免覆盖历史定义。
+- Task 3 的 A/B 是实际屏幕位置，并非固定结构；请结合答案 metadata 中的 `displayAType/displayACount/displayBType/displayBCount` 解读。
 - 研究者视图可导出当前参与者数据；Sites 版本还可导出全部答案、全部行为日志，以及将 Task 3 两项选择和真实显示组合展开后的专用 CSV。
 - “重新开始”会清除当前本地记录并生成新的参与者编号。
 

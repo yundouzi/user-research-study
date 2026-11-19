@@ -393,3 +393,79 @@ for (const scenario of [
   }
 }
 console.log("Answer timeout export checks passed: normal, partial timeout, unanswered timeout and unknown history.");
+
+vm.runInContext(`
+  globalThis.dictionaryStateBefore = JSON.stringify(state);
+  globalThis.dictionaryRows = dataDictionaryRows();
+  globalThis.dictionaryVersion = STUDY_VERSION;
+  globalThis.dictionaryStateUnchanged = dictionaryStateBefore === JSON.stringify(state);
+  globalThis.dictionaryNeeds = TASK_ONE_QUESTIONS;
+  globalThis.dictionaryProfiles = PROFILE_OPTIONS;
+  globalThis.dictionaryTrials = CONTENT_TRIALS;
+  globalThis.dictionaryComparisons = STRUCTURE_COMPARISONS;
+  globalThis.dictionaryAnswers = answerRows();
+  globalThis.dictionaryResearcherMarkup = (() => { renderResearcher(); return app.innerHTML; })();
+`, context);
+const dictionary = context.dictionaryRows.slice(1);
+const lookup = (id, measure, column = "response") => dictionary.filter(row => row[2] === id && row[4] === measure && row[5] === column);
+assert.equal(context.dictionaryStateUnchanged, true, "Dictionary generation must not alter participant data");
+assert.ok(context.dictionaryResearcherMarkup.includes('id="researchExportDictionary"'));
+assert.ok(!source.slice(source.indexOf("function renderComplete()"), source.indexOf("function renderComplete()") + 1600).includes('id="researchExportDictionary"'), "New export belongs only in researcher view");
+assert.ok(dictionary.every(row => row[0] === context.dictionaryVersion && row[1] && row[6] && row[8]), "Every entry needs version, revision and Chinese labels");
+assert.throws(() => vm.runInContext('dataDictionaryRows(-1)', context), /study_version/, "Do not mislabel unsupported historical versions");
+for (const row of context.dictionaryAnswers.slice(1)) assert.ok(lookup(row[2], row[4]).length, `Dictionary missing ${row[2]} / ${row[4]}`);
+const needsIds = ["T1-01", "T1-02", "T1-03", "T1-07", "T1-03-duration", "T1-04", "T1-05", "T1-06"];
+const needsMeasures = ["listening_preference", "discovery_start", "most_wanted_information", "information_need", "decision_time", "mismatch_action", "refind_frequency", "after_listening"];
+context.dictionaryNeeds.forEach((q, index) => {
+  const entries = lookup(needsIds[index], needsMeasures[index]);
+  assert.equal(entries.length, q.options.length);
+  for (const [code, label] of q.options) assert.ok(entries.some(row => row[6] === q.title && row[7] === code && row[8] === label));
+});
+for (const [key, id, measure] of [
+  ["gender", "P1-02", "gender"], ["listeningFrequency", "P1-04", "listening_frequency"],
+  ["platforms", "P1-05", "platforms"], ["podcastTypes", "P1-06", "podcast_types"],
+  ["listeningScenes", "P1-06.5", "listening_scenes"], ["creationExperience", "P1-08", "creation_experience"],
+  ["showFamiliarity", "P1-09", "show_familiarity"]
+]) {
+  const entries = lookup(id, measure);
+  assert.equal(entries.length, context.dictionaryProfiles[key].length);
+  for (const [code, label] of context.dictionaryProfiles[key]) assert.ok(entries.some(row => row[7] === code && row[8] === label));
+}
+for (const trial of context.dictionaryTrials) {
+  for (const key of ["q1", "q2"]) {
+    const entries = lookup(trial.id, key + "_answer");
+    assert.equal(entries.length, trial[key].options.length);
+    for (const [code, label] of trial[key].options) assert.ok(entries.some(row => row[6] === trial[key].text && row[7] === code && row[8] === label && row[10].includes(trial[key].correct)));
+    assert.equal(lookup(trial.id, key + "_correct").length, 3);
+  }
+  assert.equal(lookup(trial.id, "q3_ease_rating").length, 7);
+}
+for (const comparison of context.dictionaryComparisons) {
+  assert.equal(lookup(comparison.id, "visual_comfort_choice").length, 2);
+  const entries = lookup(comparison.id, "understanding_choice");
+  assert.equal(entries.length, 2);
+  assert.ok(entries.every(row => row[6] === "哪一个界面更容易找到喜欢的播客？"));
+  for (const type of ["list", "network", "tree", "cluster"]) assert.ok(lookup(comparison.id, "*", "metadata.displayAType").some(row => row[7] === type));
+}
+const dictionaryKeys = dictionary.map(row => JSON.stringify([row[0], row[2], row[4], row[5], row[7]]));
+assert.equal(new Set(dictionaryKeys).size, dictionaryKeys.length, "Dictionary keys must be unique");
+console.log("Data dictionary checks passed: version scope, all exported measures, exact questionnaire options, trial questions, scales and A/B mappings.");
+vm.runInContext(`
+  globalThis.dictionaryDownload = null;
+  const savedDownload = download;
+  const savedToken = researcherSessionToken;
+  download = (name, text, mime) => { globalThis.dictionaryDownload = { name, text, mime }; };
+  researcherSessionToken = "";
+  exportDataDictionary();
+  globalThis.dictionaryBlocked = dictionaryDownload === null;
+  researcherSessionToken = "test-authorized";
+  exportDataDictionary();
+  download = savedDownload;
+  researcherSessionToken = savedToken;
+`, context);
+assert.equal(context.dictionaryBlocked, true, "Dictionary export must respect researcher access");
+assert.equal(context.dictionaryDownload.name, `study-${context.dictionaryVersion}-data-dictionary.csv`);
+assert.ok(context.dictionaryDownload.text.startsWith('"study_version","dictionary_revision","question_id"'));
+assert.ok(context.dictionaryDownload.text.includes('"male","男"'));
+assert.equal(context.dictionaryDownload.mime, "text/csv;charset=utf-8");
+console.log("Dictionary CSV download checks passed: researcher access, versioned filename and UTF-8 Chinese labels.");
