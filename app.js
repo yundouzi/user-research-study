@@ -1244,12 +1244,12 @@ function renderContentTrial() {
   const enabled = featureEnabledFor(state.contentIndex);
   const isOpen = Boolean(state.featureOpen[state.contentIndex]);
   const source = audioSource(state.contentIndex);
-  return wrap(`${sectionHeader(`Task 2-D · ${state.contentIndex + 1}/5`, `片段 ${state.contentIndex + 1}`, trial.prompt, `<span class="badge ${enabled ? "warm" : "dark"}">${enabled ? "有辅助信息" : "仅音频"}</span><span class="badge warm">剩余 <b id="contentTrialTimer">02:00</b></span>`)}
+  return wrap(`${sectionHeader(`Task 2-D · ${state.contentIndex + 1}/5`, `片段 ${state.contentIndex + 1}`, trial.prompt, `<span class="badge warm content-timer">剩余 <b id="contentTrialTimer">02:00</b></span>`)}
     <div class="trial-layout ${enabled ? "" : "audio-only"}">
       <section class="card audio-panel">
         <div class="eyebrow">《岩中花述》S8E6 · ${String(Math.floor(trial.startSec / 60)).padStart(2,"0")}:${String(trial.startSec % 60).padStart(2,"0")}–${String(Math.floor(trial.endSec / 60)).padStart(2,"0")}:${String(trial.endSec % 60).padStart(2,"0")}</div>
         ${source ? `<audio class="audio-control" controls preload="metadata" src="${escapeHTML(source)}" data-start="${trial.startSec}" data-end="${trial.endSec}"></audio>` : `<div class="audio-placeholder"><div>${waveformHTML()}<b>音频文件缺失</b><p class="helper">请研究者检查 study-materials.js。</p></div></div>`}
-        <p class="helper">可播放、暂停、拖动或重复收听；无需播放完整片段即可提交。</p>
+        <p class="helper">可播放、暂停、拖动或重复收听。</p>
       </section>
       ${enabled ? `<section class="card feature-panel">
         <div class="feature-status"><div><div class="eyebrow">辅助信息</div><h2>${trial.feature}</h2></div><button class="feature-toggle" id="featureToggle" type="button">${isOpen ? "收起辅助信息" : `查看${trial.feature}`}</button></div>

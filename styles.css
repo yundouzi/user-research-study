@@ -124,6 +124,8 @@ h3 { font-size: 18px; line-height: 1.4; }
 .badge { display: inline-flex; align-items: center; min-height: 34px; padding: 5px 11px; border-radius: 999px; background: var(--green-soft); color: var(--green); font-size: 12px; font-weight: 800; }
 .badge.warm { background: var(--orange-soft); color: #9c5d2f; }
 .badge.dark { background: var(--ink); color: white; }
+.badge.content-timer { font-size: 14px; }
+#contentTrialTimer { margin-left: 4px; font-size: 16px; }
 
 .card { margin-bottom: 18px; padding: clamp(22px, 3vw, 34px); border: 1px solid var(--line); border-radius: 24px; background: rgba(255, 253, 248, .92); box-shadow: 0 10px 34px rgba(53,42,29,.06); }
 .question-card { counter-increment: question; }
