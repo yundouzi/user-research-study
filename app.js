@@ -1343,7 +1343,7 @@ function renderStructureTrial() {
   const aMeta = STRUCTURE_TYPES[comparison.a.type];
   const bMeta = STRUCTURE_TYPES[comparison.b.type];
   const optionLabel = (side, condition, metadata) => `${side}：${metadata.label}结构 · ${condition.count} 期`;
-  return wrap(`${sectionHeader(`Task 3 · ${state.structureIndex + 1}/12`, `${comparison.id} · A/B 结构对比`, "请先整体观察两个手机界面，再完成下方两项选择。", `<span class="badge">题目顺序已随机</span><span class="badge warm content-timer">剩余 <b id="structureTrialTimer">01:00</b></span>`)}
+  return wrap(`${sectionHeader(`Task 3 · ${state.structureIndex + 1}/12`, "选出你觉得更好的界面", "请先整体观察两个手机界面，再完成下方两项选择。", `<span class="badge">题目顺序已随机</span><span class="badge warm content-timer">剩余 <b id="structureTrialTimer">01:00</b></span>`)}
     <div class="comparison-grid">
       <section class="comparison-option"><div class="comparison-label"><b>A</b><span>${aMeta.label}结构 · ${comparison.a.count} 期</span></div><div class="phone-stage compact">${structureHTML(comparison.a.type, comparison.a.count, "A")}</div></section>
       <section class="comparison-option"><div class="comparison-label"><b>B</b><span>${bMeta.label}结构 · ${comparison.b.count} 期</span></div><div class="phone-stage compact">${structureHTML(comparison.b.type, comparison.b.count, "B")}</div></section>
@@ -1351,7 +1351,7 @@ function renderStructureTrial() {
     <div class="t3-floating-detail" id="task3Detail" role="status" aria-live="polite"></div>
     <form id="structureComparisonForm" class="card comparison-form">
       <section class="pair-question"><h3>Q1　哪个界面在第一眼看上去更舒适？</h3>${radioChoices("visualChoice", [["A",optionLabel("A", comparison.a, aMeta)],["B",optionLabel("B", comparison.b, bMeta)]])}</section>
-      <section class="pair-question"><h3>Q2　哪个界面更容易理解节目内容及信息组织？</h3>${radioChoices("understandingChoice", [["A",optionLabel("A", comparison.a, aMeta)],["B",optionLabel("B", comparison.b, bMeta)]])}</section>
+      <section class="pair-question"><h3>Q2　哪一个界面更容易找到喜欢的播客？</h3>${radioChoices("understandingChoice", [["A",optionLabel("A", comparison.a, aMeta)],["B",optionLabel("B", comparison.b, bMeta)]])}</section>
       <div class="form-actions"><button class="button" type="submit">${state.structureIndex === state.structureComparisons.length - 1 ? "完成结构对比" : "下一组对比"}</button></div>
     </form>`);
 }
