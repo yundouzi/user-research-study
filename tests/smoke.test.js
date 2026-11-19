@@ -507,6 +507,6 @@ console.log("Dictionary CSV download checks passed: researcher access, versioned
   assert.equal(await vm.runInContext('matchesResearcherCode("test-access")', context), true);
   context.document.head.appendChild = appendChild;
   context.YZH_STUDY_CONFIG = previousConfig;
-  assert.ok(fs.readFileSync(path.resolve(__dirname, "..", "index.html"), "utf8").includes('app.js?v=recording-fixes-1'));
+  assert.ok(fs.readFileSync(path.resolve(__dirname, "..", "index.html"), "utf8").includes('app.js?v=lite-study-1'));
   console.log("Researcher access checks passed: valid/invalid/empty code, local compatibility, Pages API isolation and hashed deployment config.");
 })().catch(error => { console.error(error); process.exitCode = 1; });
