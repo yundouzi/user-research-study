@@ -1271,16 +1271,16 @@ function renderStructureIntro() {
     <section class="hero-panel">
       <div class="eyebrow">Task 3</div>
       <h1>哪一种呈现形式更好？</h1>
-      <p class="lede">你将完成 12 组 A/B 对比。每组同时展示两种界面，请先选择视觉上更舒适的一项，再选择更容易理解内容及信息组织的一项。</p>
+      <p class="lede">你将完成12组二选一的选择题，每组限时30秒<br>请先选择视觉上更舒适的一项，再选择更容易理解的一项</p>
       <div class="level-strip">
         <div class="level-item"><b>4 种形式</b><span>列表、网状、树状、分类</span></div>
         <div class="level-item"><b>3 种数量</b><span>5、10、15 期节目</span></div>
         <div class="level-item"><b>2 个选择</b><span>视觉舒适、内容理解</span></div>
       </div>
-      <div class="notice green" style="margin-top:22px">12 组对比会为每位参与者随机排序。请比较界面的组织方式本身，不需要挑选或播放节目。</div>
+      <div class="notice green" style="margin-top:22px">请比较界面的组织方式本身，不需要挑选或播放节目。</div>
       <div class="form-actions"><button class="button" id="structureBegin" type="button">开始 12 组对比</button></div>
     </section>
-    <aside class="hero-art"><div class="hero-art-copy"><span>A / B</span><strong>12 组对比</strong></div></aside>
+    <aside class="hero-art"><div class="hero-art-copy"><span>A / B</span><strong>界面二选一</strong></div></aside>
   </div>`);
 }
 
