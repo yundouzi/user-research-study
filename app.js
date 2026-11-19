@@ -1271,7 +1271,7 @@ function renderStructureIntro() {
     <section class="hero-panel">
       <div class="eyebrow">Task 3</div>
       <h1>哪一种呈现形式更好？</h1>
-      <p class="lede">你将完成12组二选一的选择题，每组限时30秒<br>请先选择视觉上更舒适的一项，再选择更容易理解的一项</p>
+      <p class="lede">你将完成12组二选一的选择题，每组限时1min<br>请先选择视觉上更舒适的一项，再选择更容易理解的一项</p>
       <div class="level-strip">
         <div class="level-item"><b>4 种形式</b><span>列表、网状、树状、分类</span></div>
         <div class="level-item"><b>3 种数量</b><span>5、10、15 期节目</span></div>
@@ -1337,11 +1337,13 @@ function structureHTML(type, count, instance = `${type}-${count}`) {
 }
 
 function renderStructureTrial() {
+  state.structureDeadlines ||= {};
+  state.structureDeadlines[state.structureIndex] ||= Date.now() + 60000;
   const comparison = state.structureComparisons[state.structureIndex];
   const aMeta = STRUCTURE_TYPES[comparison.a.type];
   const bMeta = STRUCTURE_TYPES[comparison.b.type];
   const optionLabel = (side, condition, metadata) => `${side}：${metadata.label}结构 · ${condition.count} 期`;
-  return wrap(`${sectionHeader(`Task 3 · ${state.structureIndex + 1}/12`, `${comparison.id} · A/B 结构对比`, "请先整体观察两个手机界面，再完成下方两项选择。", `<span class="badge">题目顺序已随机</span>`)}
+  return wrap(`${sectionHeader(`Task 3 · ${state.structureIndex + 1}/12`, `${comparison.id} · A/B 结构对比`, "请先整体观察两个手机界面，再完成下方两项选择。", `<span class="badge">题目顺序已随机</span><span class="badge warm content-timer">剩余 <b id="structureTrialTimer">01:00</b></span>`)}
     <div class="comparison-grid">
       <section class="comparison-option"><div class="comparison-label"><b>A</b><span>${aMeta.label}结构 · ${comparison.a.count} 期</span></div><div class="phone-stage compact">${structureHTML(comparison.a.type, comparison.a.count, "A")}</div></section>
       <section class="comparison-option"><div class="comparison-label"><b>B</b><span>${bMeta.label}结构 · ${comparison.b.count} 期</span></div><div class="phone-stage compact">${structureHTML(comparison.b.type, comparison.b.count, "B")}</div></section>
@@ -1703,7 +1705,65 @@ function bindContentTrialTimer() {
   if (state.step === "contentTrial" && !contentTrialCompleting) countdownTimer = window.setInterval(update, 250);
 }
 
+function completeStructureTrial(timedOut, data = {}) {
+  if (state.step !== "structureTrial") return;
+  stopCountdown();
+  const comparison = state.structureComparisons[state.structureIndex];
+  state.answers.structureTrials ||= {};
+  state.answers.structureTrials[state.structureIndex] = {
+    questionId: comparison.id,
+    aType: comparison.a.type,
+    aCount: comparison.a.count,
+    bType: comparison.b.type,
+    bCount: comparison.b.count,
+    canonicalAType: comparison.canonicalA.type,
+    canonicalACount: comparison.canonicalA.count,
+    canonicalBType: comparison.canonicalB.type,
+    canonicalBCount: comparison.canonicalB.count,
+    sideSwapped: comparison.sideSwapped,
+    layoutArm: state.layoutArm,
+    visualChoice: data.visualChoice || null,
+    understandingChoice: data.understandingChoice || null,
+    dimensionsAgree: data.visualChoice && data.understandingChoice ? data.visualChoice === data.understandingChoice : null,
+    timedOut,
+    durationMs: Math.min(60000, Math.max(0, Date.now() - (state.structureDeadlines[state.structureIndex] - 60000)))
+  };
+  log(timedOut ? "structure_comparison_timeout" : "structure_comparison_complete", comparison.id, state.answers.structureTrials[state.structureIndex]);
+  save();
+  if (state.structureIndex === state.structureComparisons.length - 1) goTo("interview");
+  else {
+    state.structureIndex += 1;
+    state.pageEnteredAt = Date.now();
+    save();
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+
+function bindStructureTrialTimer() {
+  const draft = state.structureDrafts?.[state.structureIndex] || {};
+  for (const name of ["visualChoice", "understandingChoice"]) {
+    if (["A", "B"].includes(draft[name])) {
+      const input = document.querySelector(`#structureComparisonForm input[name="${name}"][value="${draft[name]}"]`);
+      if (input) input.checked = true;
+    }
+  }
+  save({ sync: false, touch: false });
+  const index = state.structureIndex;
+  const deadline = state.structureDeadlines[index];
+  const update = () => {
+    if (state.step !== "structureTrial" || state.structureIndex !== index) return;
+    const seconds = Math.ceil(Math.max(0, deadline - Date.now()) / 1000);
+    const timer = document.querySelector("#structureTrialTimer");
+    if (timer) timer.textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+    if (seconds === 0) completeStructureTrial(true, state.structureDrafts?.[index] || {});
+  };
+  countdownTimer = window.setInterval(update, 250);
+  update();
+}
+
 function bindCurrentView() {
+  if (state.step === "structureTrial") bindStructureTrialTimer();
   if (state.step === "infoRank") bindRankingInteractions();
   if (state.step === "contentTrial") {
     bindContentAudio();
@@ -2175,6 +2235,12 @@ document.addEventListener("invalid", event => {
 }, true);
 
 document.addEventListener("change", event => {
+  if (state.step === "structureTrial" && ["visualChoice", "understandingChoice"].includes(event.target.name)) {
+    state.structureDrafts ||= {};
+    const draft = state.structureDrafts[state.structureIndex] ||= {};
+    draft[event.target.name] = event.target.value;
+    save();
+  }
   if (event.target.id === "consentCheck") document.querySelector("#introNext").disabled = !event.target.checked;
   if (state.step === "contentTrial" && ["contentQ1", "contentQ2"].includes(event.target.name)) {
     const times = state.contentQuestionTimes[state.contentIndex] ||= { shownAt: Date.now() };
@@ -2309,35 +2375,7 @@ document.addEventListener("submit", event => {
   if (event.target.id === "structureComparisonForm") {
     event.preventDefault();
     const data = collectForm(event.target);
-    const comparison = state.structureComparisons[state.structureIndex];
-    state.answers.structureTrials ||= {};
-    state.answers.structureTrials[state.structureIndex] = {
-      questionId: comparison.id,
-      aType: comparison.a.type,
-      aCount: comparison.a.count,
-      bType: comparison.b.type,
-      bCount: comparison.b.count,
-      canonicalAType: comparison.canonicalA.type,
-      canonicalACount: comparison.canonicalA.count,
-      canonicalBType: comparison.canonicalB.type,
-      canonicalBCount: comparison.canonicalB.count,
-      sideSwapped: comparison.sideSwapped,
-      layoutArm: state.layoutArm,
-      visualChoice: data.visualChoice,
-      understandingChoice: data.understandingChoice,
-      dimensionsAgree: data.visualChoice === data.understandingChoice,
-      durationMs: pageDuration()
-    };
-    log("structure_comparison_complete", comparison.id, state.answers.structureTrials[state.structureIndex]);
-    save();
-    if (state.structureIndex === state.structureComparisons.length - 1) goTo("interview");
-    else {
-      state.structureIndex += 1;
-      state.pageEnteredAt = Date.now();
-      save();
-      render();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    completeStructureTrial(false, data);
   }
 
 });

@@ -331,3 +331,33 @@ for (const item of qa.structureMarkup) {
 }
 
 console.log("Smoke checks passed: secure participant IDs, balanced Task 3 sides, separate Task 3 measures, 12 stages, and no open-ended text areas.");
+
+// Exercise deadline persistence, partial timeout answers and final-trial progression.
+vm.runInContext(`
+  state.step = "structureTrial";
+  state.structureIndex = 0;
+  state.structureDeadlines = {};
+  state.structureDrafts = { 0: { visualChoice: "A" } };
+  renderStructureTrial();
+  globalThis.firstDeadline = state.structureDeadlines[0];
+  renderStructureTrial();
+  globalThis.sameDeadline = state.structureDeadlines[0] === firstDeadline;
+  state.structureDeadlines[0] = Date.now() - 1;
+  bindStructureTrialTimer();
+  globalThis.timeoutAnswer = state.answers.structureTrials[0];
+  globalThis.nextIndex = state.structureIndex;
+  globalThis.nextRemaining = state.structureDeadlines[1] - Date.now();
+  state.structureIndex = state.structureComparisons.length - 1;
+  renderStructureTrial();
+  completeStructureTrial(false, { visualChoice: "B", understandingChoice: "A" });
+  globalThis.finalStep = state.step;
+`, context);
+assert.equal(context.sameDeadline, true, "Re-render must not reset the deadline");
+assert.equal(context.timeoutAnswer.timedOut, true);
+assert.equal(context.timeoutAnswer.visualChoice, "A");
+assert.equal(context.timeoutAnswer.understandingChoice, null);
+assert.equal(context.timeoutAnswer.dimensionsAgree, null);
+assert.equal(context.nextIndex, 1);
+assert.ok(context.nextRemaining > 59000 && context.nextRemaining <= 60000);
+assert.equal(context.finalStep, "interview");
+console.log("Task 3 timer checks passed: persistent deadlines, partial timeout answers, fresh next timer and final progression.");
