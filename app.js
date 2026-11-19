@@ -502,7 +502,7 @@ const toastElement = document.querySelector("#toast");
 const accessDialog = document.querySelector("#accessDialog");
 let countdownTimer = null;
 let invalidNoticeActive = false;
-let configAttempted = false;
+let configLoadingPromise = null;
 let syncTimer = null;
 let syncInFlight = false;
 let syncQueued = false;
@@ -2006,15 +2006,16 @@ async function exportAggregateCSV(kind) {
 }
 
 function loadLocalConfig() {
-  if (window.YZH_STUDY_CONFIG || configAttempted) return Promise.resolve(Boolean(window.YZH_STUDY_CONFIG));
-  configAttempted = true;
-  return new Promise(resolve => {
+  if (window.YZH_STUDY_CONFIG?.researcherAccessCode || window.YZH_STUDY_CONFIG?.researcherAccessCodeHash) return Promise.resolve(true);
+  if (configLoadingPromise) return configLoadingPromise;
+  configLoadingPromise = new Promise(resolve => {
     const script = document.createElement("script");
     script.src = `config.js?local=${Date.now()}`;
-    script.onload = () => resolve(true);
+    script.onload = () => resolve(Boolean(window.YZH_STUDY_CONFIG?.researcherAccessCode || window.YZH_STUDY_CONFIG?.researcherAccessCodeHash));
     script.onerror = () => resolve(false);
     document.head.appendChild(script);
-  });
+  }).finally(() => { configLoadingPromise = null; });
+  return configLoadingPromise;
 }
 
 async function matchesResearcherCode(enteredCode, config = window.YZH_STUDY_CONFIG || {}) {

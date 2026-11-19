@@ -489,5 +489,24 @@ console.log("Dictionary CSV download checks passed: researcher access, versioned
   assert.ok(!/researcherAccessCode\s*:/.test(pagesConfig), "Never publish the plaintext code");
   const workflow = fs.readFileSync(path.resolve(__dirname, "..", ".github/workflows/pages.yml"), "utf8");
   assert.ok(workflow.includes("cp pages-config.js _site/config.js"));
+  const previousConfig = context.YZH_STUDY_CONFIG;
+  const appendChild = context.document.head.appendChild;
+  delete context.YZH_STUDY_CONFIG;
+  context.document.head.appendChild = script => script.onerror();
+  assert.equal(await vm.runInContext('loadLocalConfig()', context), false);
+  let loads = 0;
+  context.document.head.appendChild = script => {
+    loads += 1;
+    setTimeout(() => { context.YZH_STUDY_CONFIG = context.testAccessConfig; script.onload(); }, 0);
+  };
+  const retry = vm.runInContext('loadLocalConfig()', context);
+  const concurrent = vm.runInContext('loadLocalConfig()', context);
+  assert.equal(retry, concurrent, "Concurrent attempts must share the pending load");
+  assert.equal(await retry, true, "A failed first load must be retryable");
+  assert.equal(loads, 1);
+  assert.equal(await vm.runInContext('matchesResearcherCode("test-access")', context), true);
+  context.document.head.appendChild = appendChild;
+  context.YZH_STUDY_CONFIG = previousConfig;
+  assert.ok(fs.readFileSync(path.resolve(__dirname, "..", "index.html"), "utf8").includes('app.js?v=researcher-access-2'));
   console.log("Researcher access checks passed: valid/invalid/empty code, local compatibility, Pages API isolation and hashed deployment config.");
 })().catch(error => { console.error(error); process.exitCode = 1; });
